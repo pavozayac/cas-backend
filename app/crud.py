@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-import schemas, models
+from . import schemas, models
 from datetime import date
 from passlib.context import CryptContext
 
@@ -12,6 +12,7 @@ def create_profile(db: Session, profile: schemas.ProfileIn):
         first_name = profile.first_name,
         last_name = profile.last_name,
         date_joined = date.today(),
+        post_visibility = 0,
         last_online = date.today(),
         is_moderator = False,
         is_admin = False,
@@ -23,10 +24,13 @@ def create_profile(db: Session, profile: schemas.ProfileIn):
     db.refresh(profile_obj)
     return profile_obj
 
-def get_profile_by_id(db: Session, id: int):
+def read_profiles(db: Session):
+    return db.query(models.Profile).all()
+
+def read_profile_by_id(db: Session, id: int):
     return db.query(models.Profile).filter(models.Profile.id == id).first()
 
-def get_profile_by_email(db: Session, email: str):
+def read_profile_by_email(db: Session, email: str):
     login = db.query(models.BasicLogin).filter(models.BasicLogin.email == email).first().profile_id
     return db.query(models.Profile).filter(models.Profile.id == login)
 
@@ -36,7 +40,7 @@ def get_profile_by_email(db: Session, email: str):
 
 password_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
-def create_basic_login(db: Session, basic_login: schemas.BasicLoginIn):
+def create_basic_login(db: Session, basic_login: schemas.BasicLoginCreate):
     basic_obj = models.BasicLogin(
         profile_id = basic_login.profile_id,
         email = basic_login.email,

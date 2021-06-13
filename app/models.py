@@ -1,12 +1,14 @@
 from sqlalchemy import Column, ForeignKey, String, Boolean, Date, Integer, Enum
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 
-from database import Base
+from .database import Base
+
+
 
 class Profile(Base):
     __tablename__ = 'profiles'
 
-    id = Column(String, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     first_name = Column(String(100))
     last_name = Column(String(100))
     date_joined = Column(Date)
@@ -16,7 +18,10 @@ class Profile(Base):
     is_moderator = Column(Boolean)
     is_admin = Column(Boolean)
 
-    group_id = relationship('Group', back_populates='profiles')
+    group_id = Column(Integer, ForeignKey('groups.id'), nullable=True)
+    group = relationship('Group', backref=backref('profiles', uselist=False), foreign_keys=[group_id])
+
+    basic_login = relationship('BasicLogin')
 
 class BasicLogin(Base):
     __tablename__ = 'basic_logins'
@@ -28,7 +33,7 @@ class BasicLogin(Base):
     verification_sent = Column(Boolean)
     verified = Column(Boolean)
 
-class ForeignLogins(Base):
+class ForeignLogin(Base):
     __tablename__ = 'foreign_logins'
 
     profile_id = Column(Integer, ForeignKey(Profile.id), primary_key=True)
@@ -39,3 +44,14 @@ class ForeignLogins(Base):
     method = Column(String)
 
 
+class Group(Base):
+    __tablename__ = 'groups'
+
+    id = Column(String(10), primary_key=True)
+
+    coordinator_id = Column(Integer, ForeignKey('profiles.id'))
+    coordinator = relationship('Profile', backref=backref('owned_group', uselist=False), foreign_keys=[coordinator_id])
+
+    name = Column(String)
+    graduation_year = Column(Integer)
+    date_created = Column(Date)

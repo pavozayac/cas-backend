@@ -10,7 +10,6 @@ class ProfileBase(BaseModel):
     first_name: str
     last_name: str
     post_visibility: int = Field(gt=-1, lt=3)
-    group_id: int
 
 class ProfileIn(ProfileBase):
     pass
@@ -22,6 +21,7 @@ class SuperProfileIn(ProfileBase):
 
 class Profile(ProfileBase):
     id: int
+    group_id: Optional[int]
 
     class Config:
         orm_mode = True
@@ -30,17 +30,21 @@ class Profile(ProfileBase):
 # BasicLogin schemas
 #
 class BasicLoginBase(BaseModel):
-    profile_id: int
     email: EmailStr
-    verification_sent: bool
-    verified: bool
+   
 
-class BasicLoginIn(BasicLoginBase):
+class BasicLoginCreate(BasicLoginBase):
+    profile_id: int
+    password: str
+
+class BasicLoginSignIn(BasicLoginBase):
     password: str
     
 
 class BasicLogin(BasicLoginBase):
-    pass
+    password: str
+    verification_sent: bool
+    verified: bool
 
     class Config:
         orm_mode = True
@@ -48,6 +52,7 @@ class BasicLogin(BasicLoginBase):
 #
 #   ForeignLogin schemas
 #
+
 class ForeignLoginBase(BaseModel):
     profile_id: int
     access_token: str
@@ -62,3 +67,11 @@ class ForeignLogin(ForeignLoginBase):
 
     class Config:
         orm_mode = True
+
+#
+#   Auth
+#
+
+class Token(BaseModel):
+    token: str
+    token_type: str
