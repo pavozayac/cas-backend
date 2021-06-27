@@ -1,13 +1,18 @@
 from fastapi import HTTPException, status
+from .models import Profile
 
 #
 #   This is here to avoid circular imports
 #
 
 def CREDENTIALS_EXCEPTION(detail = 'Invalid credentials'):
-        return HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
-            detail=detail
-        )
+    return HTTPException(
+        status.HTTP_401_UNAUTHORIZED,
+        detail=detail
+    )
 
-SECRET_KEY = '2f23ebdabb89ea8db60aad506cf762b274228190dbca6157622642b79bfb174b'
+def check_profile_id_ownership(object, profile: Profile):
+    if object.profile_id != profile.id:
+        raise CREDENTIALS_EXCEPTION('Invalid onwership')
+
+

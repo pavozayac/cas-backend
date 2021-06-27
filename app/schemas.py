@@ -6,6 +6,7 @@ from datetime import date
 #
 # Profile schemas
 #
+
 class ProfileBase(BaseModel):
     first_name: str
     last_name: str
@@ -16,7 +17,7 @@ class ProfileIn(ProfileBase):
 
 #for adding moderators or admins
 class SuperProfileIn(ProfileBase):
-    is_admin: bool
+    is_admin: bool  
     is_moderator: bool
 
 class Profile(ProfileBase):
@@ -29,6 +30,7 @@ class Profile(ProfileBase):
 #
 # BasicLogin schemas
 #
+
 class BasicLoginBase(BaseModel):
     email: EmailStr
    
@@ -75,3 +77,136 @@ class ForeignLogin(ForeignLoginBase):
 class Token(BaseModel):
     token: str
     token_type: str
+
+#
+#   Group schemas
+#
+
+class GroupBase(BaseModel):
+    coordinator_id: int
+    name: str
+    graduation_year: int
+
+class GroupIn(GroupBase):
+    pass
+
+class Group(GroupBase):
+    date_created: date
+
+#
+#   GroupJoinRequests
+#
+
+# No profile_id because it is set from profile received in auth dependency
+class GroupJoinRequestBase(BaseModel):
+    group_id: int
+
+class GroupJoinRequestIn(GroupJoinRequestBase):
+    pass
+
+class GroupJoinRequest(GroupJoinRequestBase):
+    profile_id: int
+    date_added: date
+    
+#
+#   Notifications
+#
+
+class NotificationBase(BaseModel):
+    content: str
+
+class NotificationIn(NotificationBase):
+    recipients: List[int]
+
+class Notification(NotificationBase):
+    date_sent: date
+
+#
+#   Attachments
+#
+
+class AttachmentBase(BaseModel):
+    reflection_id: int
+    filename: int
+
+class AttachmentIn(AttachmentBase):
+    pass
+
+class Attachment(AttachmentBase):
+    saved_path: str
+    date_added: date
+
+#
+#   Reflections
+#
+
+class ReflectionBase(BaseModel):
+    title: str
+    text_content: str
+    creativity: bool
+    activity: bool
+    service: bool
+
+class ReflectionIn(ReflectionBase):
+    pass
+
+class Reflection(ReflectionBase):
+    profile_id: int
+    slug: str
+    date_added: date
+
+#
+#   Tags
+#   
+
+class TagBase(BaseModel):
+    name: str
+
+class TagIn(TagBase):
+    pass
+
+class Tag(TagBase):
+    date_added: date
+
+#
+#   Comments
+#
+
+class CommentBase(BaseModel):
+    content: int
+
+class CommentIn(CommentBase):
+    pass
+
+class Comment(CommentBase):
+    profile_id: int
+    reflection_id: int
+    date_added: date
+
+#
+#   Reflection reports
+#
+
+class ReflectionReportBase(BaseModel):
+    reason: str
+
+class ReflectionReportIn(ReflectionReportBase):
+    pass
+
+class ReflectionReport(ReflectionReportBase):
+    reflection_id: int
+    date_added: date
+
+#
+#   Comment reports
+#
+
+class CommentReportBase(BaseModel):
+    comment_id: int
+    reason: str
+
+class CommentReportIn(CommentReportBase):
+    pass
+
+class CommentReport(CommentReportBase):
+    date_added: date
