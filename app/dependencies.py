@@ -7,7 +7,8 @@ from jose.constants import ALGORITHMS
 from .database import SessionLocal
 from fastapi import Cookie
 from jose import jwt, JWTError
-from .utils import SECRET_KEY, CREDENTIALS_EXCEPTION
+from .utils import CREDENTIALS_EXCEPTION
+from .settings import SECRET_KEY
 from sqlalchemy.orm.session import Session
 
 def get_database():

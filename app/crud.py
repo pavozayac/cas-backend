@@ -33,7 +33,12 @@ def read_profiles(db: Session):
     return db.query(models.Profile).all()
 
 def read_profile_by_id(db: Session, id: int):
-    return db.query(models.Profile).filter(models.Profile.id == id).first()
+    profile = db.query(models.Profile).filter(models.Profile.id == id).first()
+
+    if profile is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, 'Could not find profile with this id')
+    
+    return profile
 
 def read_profile_by_email(db: Session, email: str):
     login = db.query(models.BasicLogin).filter(models.BasicLogin.email == email).first()
@@ -65,12 +70,12 @@ def delete_profile(db: Session, id: int):
 
 password_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
-def create_basic_login(db: Session, basic_login: schemas.BasicLoginCreate):
+def create_basic_login(db: Session, profile_id: int, basic_login: schemas.BasicLoginIn):
     if read_basic_login_by_email(db, basic_login.email) is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, 'This email address is already in use.')
 
     basic_obj = models.BasicLogin(
-        profile_id = basic_login.profile_id,
+        profile_id = profile_id,
         email = basic_login.email,
         password = password_context.hash(basic_login.password),
         verification_sent = False,
@@ -79,6 +84,8 @@ def create_basic_login(db: Session, basic_login: schemas.BasicLoginCreate):
 
     db.add(basic_obj)
     db.commit()
+    db.refresh(basic_obj)
+    return basic_obj
 
 def read_basic_login_by_email(db: Session, email: str):
     return db.query(models.BasicLogin).filter(models.BasicLogin.email == email).first()
@@ -102,6 +109,7 @@ def create_group(db: Session, group: schemas.GroupIn, coordinator_id: int):
     db.add(new_group)
     db.commit()
     db.refresh(new_group)
+    return new_group
 
 def read_group(db: Session, id: int):
     return db.query(models.Group).filter(models.Group.id == id).first()
@@ -152,6 +160,7 @@ def create_group_join_request(db: Session, profile_id, group_join: schemas.Group
     db.add(group_join_obj)
     db.commit()
     db.refresh(group_join_obj)
+    return group_join_obj
 
 def read_group_join_request(db: Session, id: int):
     return db.query(models.GroupJoinRequest).filter(models.GroupJoinRequest.id == id).first()
@@ -182,11 +191,12 @@ def create_notification(db: Session, notification: schemas.NotificationIn):
         recipient = db.query(models.Profile).filter(models.Profile.id == id).first()
 
         if recipient is not None:
-            notification_obj.recipients.add(recipient)
+            notification_obj.recipients.append(recipient)
 
     db.add(notification_obj)
     db.commit()
     db.refresh(notification_obj)
+    return notification_obj
 
 def read_notifications_by_recipient(db: Session, profile_id: int):
     notifications = db.query(models.Notification).filter(models.Notification.recipients.contains(profile_id)).all()
@@ -238,6 +248,7 @@ async def create_attachment(db: Session, attachment: schemas.AttachmentIn, file:
     db.add(attachment_obj)
     db.commit()
     db.refresh(attachment_obj)
+    return attachment_obj
 
 def delete_attachment(db: Session, id: int):
     attachment = db.query(models.Attachment).filter(models.Attachment.id == id).first()
@@ -269,6 +280,7 @@ def create_reflection(db: Session, profile_id: int, reflection: schemas.Reflecti
     db.add(reflection_obj)
     db.commit()
     db.refresh(reflection_obj)
+    return reflection_obj
 
 def read_reflection(db: Session, slug: str = None, id: int = None):
     if slug is not None:
@@ -316,6 +328,8 @@ def create_tag(db: Session, tag: schemas.TagIn):
 
     db.add(tag_obj)
     db.commit()
+    db.refresh(tag_obj)
+    return tag_obj
 
 def delete_tag(db: Session, name: str):
     pass
@@ -334,6 +348,8 @@ def create_comment(db: Session, profile_id: int, reflection_id: int, comment: sc
 
     db.add(comment_obj)
     db.commit()
+    db.refresh(comment_obj)
+    return comment_obj
 
 def read_comment_by_id(db: Session, id: int):
     comment = db.query(models.Comment).filter(models.Comment.id == id).first()
@@ -382,6 +398,8 @@ def create_reflection_report(db: Session, reflection_id: int, report: schemas.Re
 
     db.add(report_obj)
     db.commit()
+    db.refresh(report_obj)
+    return report_obj
 
 def read_reflection_report_by_id(db: Session, id: int):
     report = db.query(models.ReflectionReport).filter(models.ReflectionReport.id == id).first()
@@ -401,6 +419,46 @@ def read_reports_by_reflection_id(db: Session, reflection_id: int):
 
 def delete_reflection_report(db: Session, id: int):
     report = db.query(models.ReflectionReport).filter(models.ReflectionReport.id == id).first()
+
+    if report is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, 'Reflection report not found')
+
+    db.delete(report)
+    db.commit()
+
+#
+#   CommentReport CRUD
+#
+
+def create_comment_report(db: Session, comment_id: int, report: schemas.CommentReportIn):
+    report_obj = models.CommentReport(
+        reflection_id = comment_id,
+        reason = report.reason
+    )
+
+    db.add(report_obj)
+    db.commit()
+    db.refresh(report_obj)
+    return report_obj
+
+def read_comment_report_by_id(db: Session, id: int):
+    report = db.query(models.CommentReport).filter(models.CommentReport.id == id).first()
+
+    if report is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, 'Reflection report not found')
+
+    return report
+
+def read_reports_by_comment_id(db: Session, comment_id: int):
+    reports = db.query(models.CommentReport).filter(models.CommentReport.comment_id == comment_id).all()
+
+    if reports is None: 
+        raise HTTPException(status.HTTP_404_NOT_FOUND, 'Reflection reports not found')
+
+    return reports
+
+def delete_comment_report(db: Session, id: int):
+    report = db.query(models.CommentReport).filter(models.CommentReport.id == id).first()
 
     if report is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, 'Reflection report not found')

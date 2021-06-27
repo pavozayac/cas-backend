@@ -147,7 +147,7 @@ class Reflection(Base):
 
     favouritees = relationship('Profile', secondary=favourites, back_populates='favourited')
 
-    reports = relationship('ReflectionReports', back_populates='reflection')
+    reports = relationship('ReflectionReport', back_populates='reflection')
 
     tags = relationship('Tag', secondary=tags_reflections, back_populates='reflections')
 
@@ -175,7 +175,7 @@ class Comment(Base):
     content = Column(String(200))
     date_added = Column(DateTime)
 
-    reports = relationship('CommentReports', back_populates='comment')
+    reports = relationship('CommentReport', back_populates='comment')
 
 
 class ReflectionReport(Base):

@@ -1,16 +1,15 @@
-from fastapi.exceptions import HTTPException
-from app.models import BasicLogin
+from ..models import BasicLogin
 import datetime
-from fastapi import APIRouter, Depends, status, Response
-from sqlalchemy import log
+from fastapi import APIRouter, Depends, Response
 from .. import crud
-from ..schemas import BasicLoginCreate, BasicLoginSignIn, Token
+from ..schemas import BasicLoginIn, RegisterIn, BasicLoginSignIn, Token
 from ..dependencies import get_database
 from sqlalchemy.orm.session import Session
 from passlib.context import CryptContext
 from jose import jwt
 from ..utils import CREDENTIALS_EXCEPTION
 from ..settings import SECRET_KEY
+from app import schemas
 
 password_context = CryptContext(schemes=['bcrypt'])
 
@@ -27,9 +26,16 @@ def create_token(claims: dict):
     return token
 
 # Takes 
-@router.post('/register')
-async def register(login: BasicLoginCreate, db: Session = Depends(get_database)):
-    crud.create_basic_login(db, login)
+@router.post('/register', response_model=schemas.BasicLogin)
+async def register(login: RegisterIn, db: Session = Depends(get_database)):
+    profile_in = schemas.ProfileIn(first_name = login.first_name, last_name = login.last_name, post_visibility = login.post_visibility)
+    created_profile = crud.create_profile(db, profile_in)
+
+    basic_in = BasicLoginIn(email=login.email, password=login.password)
+    created_login = crud.create_basic_login(db, created_profile.id, basic_in)
+
+    return created_login
+
 
 # Login sets a cookie but also returns the token object
 @router.post('/login', response_model=Token)

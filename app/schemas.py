@@ -3,6 +3,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field, EmailStr
 from datetime import date
 
+
 #
 # Profile schemas
 #
@@ -35,8 +36,7 @@ class BasicLoginBase(BaseModel):
     email: EmailStr
    
 
-class BasicLoginCreate(BasicLoginBase):
-    profile_id: int
+class BasicLoginIn(BasicLoginBase):
     password: str
 
 class BasicLoginSignIn(BasicLoginBase):
@@ -50,6 +50,13 @@ class BasicLogin(BasicLoginBase):
 
     class Config:
         orm_mode = True
+
+#
+#   Registration scheme
+#
+
+class RegisterIn(ProfileIn,  BasicLoginIn):
+    pass
 
 #
 #   ForeignLogin schemas
@@ -120,6 +127,9 @@ class NotificationIn(NotificationBase):
 
 class Notification(NotificationBase):
     date_sent: date
+
+    class Config:
+        orm_mode = True
 
 #
 #   Attachments

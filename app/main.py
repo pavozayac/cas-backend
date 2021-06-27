@@ -8,7 +8,7 @@ from typing import List
 
 from . import models, crud, schemas
 
-from .routers import auth, profiles
+from .routers import auth, profiles, post_notifications
 
 api = FastAPI()
 
@@ -22,6 +22,12 @@ api.include_router(
     profiles.router,
     prefix='/profiles',
     tags=['profiles']
+)
+
+api.include_router(
+    post_notifications.router,
+    prefix='/post-notifications',
+    tags=['post_notifications']
 )
 
 models.Base.metadata.create_all(bind=engine)
