@@ -44,23 +44,20 @@ def read_profile_by_email(db: Session, email: str):
     login = db.query(models.BasicLogin).filter(models.BasicLogin.email == email).first()
     return login.profile
 
-def update_profile(db: Session, id: int, profile: schemas.ProfileIn):
-    retrieved = db.query(models.Profile).filter(models.Profile.id == id).first()
-
-    if retrieved is None:
+def update_profile(db: Session, instance: models.Profile, schema: schemas.ProfileIn):
+    if instance is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Profile with this ID not found.')
 
-    retrieved.first_name = profile.first_name
-    retrieved.last_name = profile.last_name
-    retrieved.post_visibility = profile.post_visibility
+    instance.first_name = schema.first_name
+    instance.last_name = schema.last_name
+    instance.post_visibility = schema.post_visibility
 
     db.commit()
+    db.refresh(instance)
+    return instance
 
-def delete_profile(db: Session, id: int):
-    profile = db.query(models.Profile).filter(models.Profile.id == id).first()
-
-    db.delete(profile)
-
+def delete_profile(db: Session, instance: models.Profile):
+    db.delete(instance)
     db.commit()
     
 
@@ -111,7 +108,7 @@ def create_group(db: Session, group: schemas.GroupIn, coordinator_id: int):
     db.refresh(new_group)
     return new_group
 
-def read_group(db: Session, id: int):
+def read_group_by_id(db: Session, id: int):
     return db.query(models.Group).filter(models.Group.id == id).first()
 
 def filter_groups(db: Session, name = None, gyear_lte = None, gyear_gte = None):
@@ -128,22 +125,17 @@ def filter_groups(db: Session, name = None, gyear_lte = None, gyear_gte = None):
 
     return groups.all()
 
-def update_group(db: Session, id: int, group: schemas.GroupIn):
-    retrieved = db.query(models.Group).filter(models.Group.id == id).first()
-
-    retrieved.coordinator_id = group.coordinator_id
-    retrieved.name = group.name
-    retrieved.graduation_year = group.graduation_year
+def update_group(db: Session, instance: models.Group, group: schemas.GroupIn):
+    instance.coordinator_id = group.coordinator_id
+    instance.name = group.name
+    instance.graduation_year = group.graduation_year
 
     db.commit()
+    db.refresh(instance)
+    return instance
 
-def delete_group(db: Session, id: int):
-    retrieved = db.query(models.Group).filter(models.Group.id == id).first()
-
-    if retrieved is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, 'Group not found')
-
-    db.delete(retrieved)
+def delete_group(db: Session, instance: models.Group):
+    db.delete(instance)
     db.commit()
 
 #   
@@ -162,19 +154,14 @@ def create_group_join_request(db: Session, profile_id, group_join: schemas.Group
     db.refresh(group_join_obj)
     return group_join_obj
 
-def read_group_join_request(db: Session, id: int):
+def read_group_join_request_by_id(db: Session, id: int):
     return db.query(models.GroupJoinRequest).filter(models.GroupJoinRequest.id == id).first()
 
 def read_group_join_requests_by_group(db: Session, group_id: int):
     return db.query(models.GroupJoinRequest).filter(models.GroupJoinRequest.group_id == group_id).all()
 
-def delete_group_join_request(db: Session, request_id: int):
-    request = db.query(models.GroupJoinRequest).filter(models.GroupJoinRequest.id == request_id).first()
-
-    if request is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, 'Group join request not found.')
-
-    db.delete(request)
+def delete_group_join_request(db: Session, instance: models.GroupJoinRequest):
+    db.delete(instance)
     db.commit()
 
 #
@@ -203,10 +190,8 @@ def read_notifications_by_recipient(db: Session, profile_id: int):
     
     return notifications
 
-def update_notification(db: Session, id: int, notfification: schemas.NotificationIn):
-    retrieved = db.query(models.Notification).filter(models.Notification.id == id).first()
-
-    retrieved.content = notfification.content
+def update_notification(db: Session, instance: models.Notification, notfification: schemas.NotificationIn):
+    instance.content = notfification.content
     
     new_recipients = []
     for recipient_id in notfification.recipients:
@@ -215,15 +200,14 @@ def update_notification(db: Session, id: int, notfification: schemas.Notificatio
         if recip is not None:
             new_recipients.append(recip)
 
-    retrieved.recipients = new_recipients
+    instance.recipients = new_recipients
 
     db.commit()
-    db.refresh(retrieved)
+    db.refresh(instance)
+    return instance
 
-def delete_notification(db: Session, id: int):
-    retrieved = db.query(models.Notification).filter(models.Notification.id == id).first()
-    
-    db.delete(retrieved)
+def delete_notification(db: Session, instance: models.Notification):    
+    db.delete(instance)
     db.commit()
 
 #
@@ -293,27 +277,19 @@ def read_reflection(db: Session, slug: str = None, id: int = None):
 
     return reflection
 
-def update_reflection(db: Session, id: int, reflection: schemas.ReflectionIn):
-    retrieved = db.query(models.Reflection).filter(models.Reflection.id == id).first()
-
-    if retrieved is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, 'Reflection not found')
-
-    retrieved.title = reflection.title
-    retrieved.text_content = reflection.text_content
-    retrieved.creativity = reflection.creativity
-    retrieved.activity = reflection.activity
-    retrieved.service = reflection.service
+def update_reflection(db: Session, instance: models.Reflection, reflection: schemas.ReflectionIn):
+    instance.title = reflection.title
+    instance.text_content = reflection.text_content
+    instance.creativity = reflection.creativity
+    instance.activity = reflection.activity
+    instance.service = reflection.service
 
     db.commit()
+    db.refresh(instance)
+    return instance
 
-def delete_reflection(db: Session, id: int):
-    retrieved = db.query(models.Reflection).filter(models.Reflection.id == id).first()
-
-    if retrieved is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, 'Reflection not found')
-
-    db.delete(retrieved)
+def delete_reflection(db: Session, instance: models.Reflection):
+    db.delete(instance)
     db.commit()
 
 #
@@ -331,8 +307,17 @@ def create_tag(db: Session, tag: schemas.TagIn):
     db.refresh(tag_obj)
     return tag_obj
 
-def delete_tag(db: Session, name: str):
-    pass
+def read_tag_by_name(db: Session, name: str):
+    retrieved = db.query(models.Tag).filter(models.Tag.name == name).first()
+
+    if retrieved is None:
+        raise HTTPException(404, 'Tag with this name was not found')
+
+    return retrieved
+
+def delete_tag(db: Session, instance: models.Tag):
+    db.delete(instance)
+    db.commit()
 
 #
 #   Comments CRUD
@@ -367,23 +352,15 @@ def read_comments_by_reflection_id(db: Session, reflection_id: int):
     
     return comments
 
-def update_comment(db: Session, id: int, comment: schemas.CommentIn):
-    retrieved = db.query(models.Comment).filter(models.Comment.id == id).first()
-
-    if retrieved is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, 'Comment not found')
-
-    retrieved.content = comment.content
+def update_comment(db: Session, instance: models.Comment, comment: schemas.CommentIn):
+    instance.content = comment.content
 
     db.commit()
+    db.refresh(instance)
+    return instance
 
-def delete_comment(db: Session, id: int):
-    comment = db.query(models.Comment).filter(models.Comment.id == id).first()
-
-    if comment is None:
-        raise HTTPException(HTTP_404_NOT_FOUND, 'Comment not found')
-
-    db.delete(comment)
+def delete_comment(db: Session, instance):
+    db.delete(instance)
     db.commit()
 
 #
