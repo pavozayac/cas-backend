@@ -1,6 +1,6 @@
-from app.models import Profile
+from .resources.models import Profile
 from fastapi.param_functions import Depends
-from app.crud import read_profile_by_email
+from app.resources.crud import read_profile_by_email
 from typing import Optional
 
 from jose.constants import ALGORITHMS

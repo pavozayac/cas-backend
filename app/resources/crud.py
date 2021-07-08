@@ -1,8 +1,11 @@
+import re
 from pydantic.networks import HttpUrl
 from pydantic.schema import schema
 from sqlalchemy.orm import Session, query
 from starlette.status import HTTP_404_NOT_FOUND
-from . import schemas, models, settings
+from . import schemas, models
+from .. import settings
+from ..utils import filter_from_schema, sort_from_schema
 from datetime import date, datetime
 from passlib.context import CryptContext
 from fastapi import status, HTTPException, UploadFile
@@ -14,14 +17,9 @@ import os
 
 def create_profile(db: Session, profile: schemas.ProfileIn):
     profile_obj = models.Profile(
-        first_name = profile.first_name,
-        last_name = profile.last_name,
+        **profile.dict(),
         date_joined = date.today(),
-        post_visibility = 0,
-        last_online = date.today(),
-        is_moderator = False,
-        is_admin = False,
-        group_id = None
+        last_online = date.today()
     )
 
     db.add(profile_obj)
@@ -43,6 +41,15 @@ def read_profile_by_id(db: Session, id: int):
 def read_profile_by_email(db: Session, email: str):
     login = db.query(models.BasicLogin).filter(models.BasicLogin.email == email).first()
     return login.profile
+
+def filter_profiles(db: Session, filters: schemas.ProfileFilters, sorts: schemas.ProfileSorts):
+    search = db.query(models.Profile)
+    search = filter_from_schema(search, models.Profile, filters)
+    search = sort_from_schema(search, models.Profile, sorts)
+
+    return search.all()
+
+    
 
 def update_profile(db: Session, instance: models.Profile, schema: schemas.ProfileIn):
     if instance is None:
@@ -142,7 +149,7 @@ def delete_group(db: Session, instance: models.Group):
 #   GroupJoinRequests CRUD
 #
 
-def create_group_join_request(db: Session, profile_id, group_join: schemas.GroupJoinRequestIn):
+def create_group_join_request(db: Session, profile_id: int, group_join: schemas.GroupJoinRequestIn):
     group_join_obj = models.GroupJoinRequest(
         group_id = group_join.group_id,
         profile_id = profile_id,

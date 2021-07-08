@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, validator, ValidationError
 from datetime import date
 
 
@@ -11,7 +11,13 @@ from datetime import date
 class ProfileBase(BaseModel):
     first_name: str
     last_name: str
-    post_visibility: int = Field(gt=-1, lt=3)
+    post_visibility: int
+
+    @validator('post_visibility')
+    def visibility_validation(cls, v):
+        if v < 0 or v > 2:
+            raise ValidationError('Post visibility not within range')
+        return v
 
 class ProfileIn(ProfileBase):
     pass
@@ -21,13 +27,29 @@ class SuperProfileIn(ProfileBase):
     is_admin: bool  
     is_moderator: bool
 
+
 class Profile(ProfileBase):
     id: int
     group_id: Optional[int]
+    date_joined: date
+    post_visibility: int
 
     class Config:
         orm_mode = True
 
+class ProfileFilters(BaseModel):
+    group_id: Optional[int]
+    post_visibility: Optional[int]
+    last_online_gte: Optional[date]
+    last_online_lte: Optional[date]
+    date_joined_gte: Optional[date]
+    date_joined_lte: Optional[date]
+
+class ProfileSorts(BaseModel):
+    date_joined: Optional[str]
+    post_visibility: Optional[str]
+    last_online: Optional[str]
+    first_name: Optional[str]
 #
 # BasicLogin schemas
 #

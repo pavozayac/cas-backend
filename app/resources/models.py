@@ -4,7 +4,7 @@ from sqlalchemy import Column, ForeignKey, String, Boolean, Date, Integer, Enum,
 from sqlalchemy.orm import relation, relationship, backref
 from sqlalchemy.sql.traversals import ColIdentityComparatorStrategy
 
-from .database import Base
+from ..database import Base
 
 
 class Profile(Base):
@@ -32,6 +32,8 @@ class Profile(Base):
     comments = relationship('Comment', back_populates='author')
 
     favourited = relationship('Reflection', secondary='favourites', back_populates='favouritees')
+
+    basic_login = relationship('BasicLogin', back_populates='profile', cascade='all, delete')
 
 class BasicLogin(Base):
     __tablename__ = 'basic_logins'
@@ -143,7 +145,7 @@ class Reflection(Base):
 
     attachments = relationship('Attachment', back_populates='reflection')
 
-    comments = relationship('Comment', back_populates='reflection')
+    comments = relationship('Comment', back_populates='reflection', cascade='all, delete')
 
     favouritees = relationship('Profile', secondary=favourites, back_populates='favourited')
 

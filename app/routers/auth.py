@@ -1,20 +1,21 @@
-from ..models import BasicLogin
+from ..resources.models import BasicLogin
 import datetime
 from fastapi import APIRouter, Depends, Response
-from .. import crud
-from ..schemas import BasicLoginIn, RegisterIn, BasicLoginSignIn, Token
-from ..dependencies import get_database
+from ..resources import crud
+from ..resources.schemas import BasicLoginIn, RegisterIn, BasicLoginSignIn, Token
+from ..dependencies import get_database, LoginAuth
 from sqlalchemy.orm.session import Session
 from passlib.context import CryptContext
 from jose import jwt
 from ..utils import CREDENTIALS_EXCEPTION
 from ..settings import SECRET_KEY
-from app import schemas
+from ..resources import schemas
+
+from ..resources import models
 
 password_context = CryptContext(schemes=['bcrypt'])
 
 router = APIRouter()
-
 
 def create_token(claims: dict):
     target = claims.copy()
@@ -54,3 +55,11 @@ async def login(response: Response, login: BasicLoginSignIn, db: Session = Depen
         }
     else:
         raise CREDENTIALS_EXCEPTION()
+
+@router.delete('/unregister')
+async def delete_user(profile: models.Profile = Depends(LoginAuth)):
+    crud.delete_profile(profile)
+
+    return {
+        'detail': 'Profile and login information successfully deleted'
+    }

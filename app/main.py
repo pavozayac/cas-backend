@@ -1,12 +1,12 @@
-from app.utils import CREDENTIALS_EXCEPTION
+from .utils import CREDENTIALS_EXCEPTION
 from sqlalchemy.orm.session import Session
 from fastapi import FastAPI, Depends, HTTPException, status
-from .schemas import ProfileIn
+from .resources.schemas import ProfileIn
 from .database import engine
 from .dependencies import get_database, LoginAuth
 from typing import List
 
-from . import models, crud, schemas
+from .resources import models, crud, schemas
 
 from .routers import auth, profiles, post_notifications
 

@@ -2,7 +2,7 @@ from app.dependencies import LoginAuth, get_database
 from fastapi import APIRouter
 from fastapi.param_functions import Depends
 from pydantic.types import SecretBytes
-from .. import crud, schemas, models
+from ..resources import crud, schemas, models
 from sqlalchemy.orm.session import Session  
 
 router = APIRouter()
