@@ -15,8 +15,8 @@ def CREDENTIALS_EXCEPTION(detail = 'Invalid credentials'):
         detail=detail
     )
 
-def check_object_ownership(object, profile: Profile):
-    if object.profile_id != profile.id:
+def check_object_ownership(object, field: str, profile: Profile):
+    if getattr(object, field) != profile.id:
         raise CREDENTIALS_EXCEPTION('Invalid onwership')
 
 

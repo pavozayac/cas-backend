@@ -118,17 +118,10 @@ def create_group(db: Session, group: schemas.GroupIn, coordinator_id: int):
 def read_group_by_id(db: Session, id: int):
     return db.query(models.Group).filter(models.Group.id == id).first()
 
-def filter_groups(db: Session, name = None, gyear_lte = None, gyear_gte = None):
+def filter_groups(db: Session, filters: schemas.GroupFilters, sorts: schemas.GroupSorts):
     groups = db.query(models.Group)
-
-    if name is not None:
-        groups = groups.filter(models.Group.name.like(name))
-    
-    if gyear_lte is not None:
-        groups = groups.filter(models.Group.graduation_year >= gyear_lte)
-
-    if gyear_gte is not None:
-        groups = groups.filter(models.Group.graduation_year <= gyear_gte)
+    groups = filter_from_schema(groups, models.Group, filters)
+    groups = sort_from_schema(groups, models.Group, sorts)    
 
     return groups.all()
 
@@ -283,6 +276,9 @@ def read_reflection(db: Session, slug: str = None, id: int = None):
         raise HTTPException(status.HTTP_404_NOT_FOUND, 'Reflection with this slug does not exist')
 
     return reflection
+
+def filter_reflections(db: Session, filters, sorts):
+    
 
 def update_reflection(db: Session, instance: models.Reflection, reflection: schemas.ReflectionIn):
     instance.title = reflection.title

@@ -15,7 +15,7 @@ class ProfileBase(BaseModel):
 
     @validator('post_visibility')
     def visibility_validation(cls, v):
-        if v < 0 or v > 2:
+        if v not in [0,1,2]:
             raise ValidationError('Post visibility not within range')
         return v
 
@@ -122,6 +122,19 @@ class GroupIn(GroupBase):
 class Group(GroupBase):
     date_created: date
 
+    class Config:
+        orm_mode = True
+
+class GroupFilters(BaseModel):
+    coordinator_id: Optional[int]
+    name: Optional[str]
+    date_created_gte: Optional[date]
+    date_created_lte: Optional[date]
+
+class GroupSorts(BaseModel):
+    date_created: Optional[str]
+    name: Optional[str]
+
 #
 #   GroupJoinRequests
 #
@@ -134,8 +147,11 @@ class GroupJoinRequestIn(GroupJoinRequestBase):
     pass
 
 class GroupJoinRequest(GroupJoinRequestBase):
-    profile_id: int
+    profile: Profile
     date_added: date
+
+    class Config:
+        orm_mode = True
     
 #
 #   Notifications
@@ -168,6 +184,9 @@ class Attachment(AttachmentBase):
     saved_path: str
     date_added: date
 
+    class Config:
+        orm_mode = True
+
 #
 #   Reflections
 #
@@ -187,6 +206,17 @@ class Reflection(ReflectionBase):
     slug: str
     date_added: date
 
+    class Config:
+        orm_mode = True
+
+class ReflectionFilters(BaseModel):
+    title: Optional[str]
+    creativity: Optional[bool]
+    activity: Optional[bool]
+    service: Optional[bool]
+    profile_id: Optional[int]
+
+
 #
 #   Tags
 #   
@@ -199,6 +229,9 @@ class TagIn(TagBase):
 
 class Tag(TagBase):
     date_added: date
+
+    class Config:
+        orm_mode = True
 
 #
 #   Comments
@@ -215,6 +248,9 @@ class Comment(CommentBase):
     reflection_id: int
     date_added: date
 
+    class Config:
+        orm_mode = True
+
 #
 #   Reflection reports
 #
@@ -229,6 +265,10 @@ class ReflectionReport(ReflectionReportBase):
     reflection_id: int
     date_added: date
 
+    class Config:
+        orm_mode = True
+
+
 #
 #   Comment reports
 #
@@ -242,3 +282,6 @@ class CommentReportIn(CommentReportBase):
 
 class CommentReport(CommentReportBase):
     date_added: date
+
+    class Config:
+        orm_mode = True

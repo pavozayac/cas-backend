@@ -1,4 +1,5 @@
 from pydantic.schema import schema
+from pydantic.utils import deep_update
 from ..resources import crud, schemas
 from fastapi import APIRouter, Depends
 from typing import List, Optional
@@ -27,3 +28,16 @@ async def get_profile(id: int, db: Session = Depends(get_database)):
 @router.get('/notifications', response_model=List[schemas.Notification])
 async def get_profile_notifications(profile: Profile = Depends(LoginAuth)):
     return profile.notifications
+
+@router.put('/current', response_model=schemas.Profile)
+async def put_current_profile(data: schemas.ProfileIn, profile: Profile = Depends(LoginAuth), db: Session = Depends(get_database)):
+    return crud.update_profile(db, profile, data)
+
+
+@router.delete('/current')
+async def delete_current_profile(profile: Profile = Depends(LoginAuth), db: Session = Depends(get_database)):
+    crud.delete_profile(db, profile)
+
+    return {
+        'detail': 'Successfully deleted profile'
+    }

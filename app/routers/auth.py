@@ -55,11 +55,3 @@ async def login(response: Response, login: BasicLoginSignIn, db: Session = Depen
         }
     else:
         raise CREDENTIALS_EXCEPTION()
-
-@router.delete('/unregister')
-async def delete_user(profile: models.Profile = Depends(LoginAuth)):
-    crud.delete_profile(profile)
-
-    return {
-        'detail': 'Profile and login information successfully deleted'
-    }
