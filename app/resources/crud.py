@@ -277,7 +277,7 @@ def read_reflection(db: Session, slug: str = None, id: int = None):
 
     return reflection
 
-def filter_reflections(db: Session, filters, sorts):
+#def filter_reflections(db: Session, filters, sorts):
     
 
 def update_reflection(db: Session, instance: models.Reflection, reflection: schemas.ReflectionIn):
