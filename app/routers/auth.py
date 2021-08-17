@@ -27,7 +27,7 @@ def create_token(claims: dict):
     return token
 
 # Takes 
-@router.post('/register', response_model=schemas.BasicLogin)
+@router.post('/register', response_model=schemas.Profile)
 async def register(login: RegisterIn, db: Session = Depends(get_database)):
     profile_in = schemas.ProfileIn(first_name = login.first_name, last_name = login.last_name, post_visibility = login.post_visibility)
     created_profile = crud.create_profile(db, profile_in)
@@ -35,7 +35,7 @@ async def register(login: RegisterIn, db: Session = Depends(get_database)):
     basic_in = BasicLoginIn(email=login.email, password=login.password)
     created_login = crud.create_basic_login(db, created_profile.id, basic_in)
 
-    return created_login
+    return created_profile
 
 
 # Login sets a cookie but also returns the token object

@@ -1,7 +1,45 @@
+from app.database import Base
 from typing import List, Optional
 
 from pydantic import BaseModel, Field, EmailStr, validator, ValidationError
 from datetime import date
+from ..resources import models
+ 
+#
+#   Attachments
+#
+
+class AttachmentBase(BaseModel):
+    reflection_id: int
+    filename: str
+
+class AttachmentIn(AttachmentBase):
+    pass
+
+class Attachment(AttachmentBase):
+    saved_path: str
+    date_added: date
+
+    class Config:
+        orm_mode = True
+
+#
+#   Generic Avatar Schemas
+#
+
+class AvatarBase(BaseModel):
+    filename: str
+
+class AvatarIn(AvatarBase):
+    pass
+
+class Avatar(AvatarBase):
+    id: str
+    saved_path: str
+    date_added: date
+
+    class Config:
+        orm_mode = True
 
 
 #
@@ -33,6 +71,7 @@ class Profile(ProfileBase):
     group_id: Optional[int]
     date_joined: date
     post_visibility: int
+    avatar: Avatar
 
     class Config:
         orm_mode = True
@@ -44,6 +83,9 @@ class ProfileFilters(BaseModel):
     last_online_lte: Optional[date]
     date_joined_gte: Optional[date]
     date_joined_lte: Optional[date]
+
+    class Meta:
+        source = models.Profile
 
 class ProfileSorts(BaseModel):
     date_joined: Optional[str]
@@ -169,53 +211,8 @@ class Notification(NotificationBase):
     class Config:
         orm_mode = True
 
-#
-#   Attachments
-#
-
-class AttachmentBase(BaseModel):
-    reflection_id: int
-    filename: int
-
-class AttachmentIn(AttachmentBase):
-    pass
-
-class Attachment(AttachmentBase):
-    saved_path: str
-    date_added: date
-
-    class Config:
-        orm_mode = True
-
-#
-#   Reflections
-#
-
-class ReflectionBase(BaseModel):
-    title: str
-    text_content: str
-    creativity: bool
-    activity: bool
-    service: bool
-
-class ReflectionIn(ReflectionBase):
-    pass
-
-class Reflection(ReflectionBase):
-    profile_id: int
-    slug: str
-    date_added: date
-
-    class Config:
-        orm_mode = True
-
-class ReflectionFilters(BaseModel):
-    title: Optional[str]
-    creativity: Optional[bool]
-    activity: Optional[bool]
-    service: Optional[bool]
-    profile_id: Optional[int]
-
+class NotificationSorts(BaseModel):
+    date_sent: Optional[str]
 
 #
 #   Tags
@@ -232,6 +229,60 @@ class Tag(TagBase):
 
     class Config:
         orm_mode = True
+
+class TagFilters(BaseModel):
+    name: Optional[str]
+
+    class Meta:
+        source = models.Tag
+
+class TagSorts(BaseModel):
+    name: Optional[str]
+    date_added: Optional[str]
+
+#
+#   Reflections
+#
+
+class ReflectionBase(BaseModel):
+    title: str
+    text_content: str
+    creativity: bool
+    activity: bool
+    service: bool
+    
+
+class ReflectionIn(ReflectionBase):
+    tags: List[TagIn]
+
+class Reflection(ReflectionBase):
+    profile_id: int
+    slug: str
+    date_added: date
+    is_favourite: bool
+    tags: List[Tag]
+    attachments: List[Attachment]
+    # Warning, this property needs to be set explicitly in the routes, as it requires info about the user
+
+    class Config:
+        orm_mode = True
+
+class ReflectionFilters(BaseModel):
+    title: Optional[str]
+    creativity: Optional[bool]
+    activity: Optional[bool]
+    service: Optional[bool]
+    profile: Optional[ProfileFilters]
+
+    class Meta:
+        source = models.Reflection
+
+class ReflectionSorts(BaseModel):
+    title: Optional[str]
+    date_added: Optional[str]
+
+    class Meta:
+        source = models.Reflection
 
 #
 #   Comments
@@ -251,6 +302,10 @@ class Comment(CommentBase):
     class Config:
         orm_mode = True
 
+# Comments cannot be filtered, as basic filtering functionality is provided via the URL (retrieving comments from under a single reflection)
+class CommentSorts(BaseModel):
+    date_added: Optional[str]
+
 #
 #   Reflection reports
 #
@@ -268,6 +323,8 @@ class ReflectionReport(ReflectionReportBase):
     class Config:
         orm_mode = True
 
+class ReflectionReportSorts(BaseModel):
+    date_added: Optional[str]
 
 #
 #   Comment reports
@@ -285,3 +342,6 @@ class CommentReport(CommentReportBase):
 
     class Config:
         orm_mode = True
+
+class CommentReportSorts(BaseModel):
+    date_added: Optional[str]

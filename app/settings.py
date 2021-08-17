@@ -1,3 +1,3 @@
 SECRET_KEY = '2f23ebdabb89ea8db60aad506cf762b274228190dbca6157622642b79bfb174b'
 
-ATTACHMENT_PATH = 'media/attachments/'
+ATTACHMENT_PATH = '/media/attachments/'

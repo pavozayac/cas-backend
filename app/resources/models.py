@@ -1,9 +1,6 @@
-from datetime import date
-from pydantic.errors import IntegerError
-from sqlalchemy import Column, ForeignKey, String, Boolean, Date, Integer, Enum, DateTime, Table, Text
-from sqlalchemy.orm import relation, relationship, backref
-from sqlalchemy.sql.traversals import ColIdentityComparatorStrategy
-
+from sqlalchemy import Column, ForeignKey, String, Boolean, Date, Integer, Enum, DateTime, Table, Text, Unicode, event
+from sqlalchemy.orm import relationship, backref
+from os import remove as remove_file
 from ..database import Base
 
 
@@ -14,18 +11,19 @@ class Profile(Base):
     first_name = Column(String(100))
     last_name = Column(String(100))
     date_joined = Column(Date)
-    # 0 = only coordinator, 1 = only group, 2 = everyone
+    # 0 = only coordinator, 1 = only group, 2 = every logged in user, validation is provided in schemas
     post_visibility = Column(Integer)
     last_online = Column(Date)
-    is_moderator = Column(Boolean)
-    is_admin = Column(Boolean)
+    is_moderator = Column(Boolean, default=False)
+    is_admin = Column(Boolean, default=False)
 
     group_id = Column(Integer, ForeignKey('groups.id'), nullable=True)
-    group = relationship('Group', backref=backref('profiles', uselist=False), foreign_keys=[group_id])
+    group = relationship('Group', back_populates='members', foreign_keys=[group_id])
 
     group_requests = relationship('GroupJoinRequest', back_populates='profile')
 
     notifications = relationship('Notification', secondary='notifications_recipients', back_populates='recipients')
+    notifications_authored = relationship('Notification', back_populates='author')
 
     reflections = relationship('Reflection', back_populates='author')
 
@@ -34,6 +32,19 @@ class Profile(Base):
     favourited = relationship('Reflection', secondary='favourites', back_populates='favouritees')
 
     basic_login = relationship('BasicLogin', back_populates='profile', cascade='all, delete')
+
+    avatar_id = Column(Integer, ForeignKey('profile_avatars.id'), nullable=True, default=None)
+    avatar = relationship('ProfileAvatar', backref=backref('profile', uselist=False), cascade='all, delete')
+
+#   This model will be used for profile pictures
+class ProfileAvatar(Base):
+    __tablename__ = 'profile_avatars'
+
+    id = Column(String, primary_key=True)
+
+    saved_path = Column(String)
+    filename = Column(String)
+    date_added = Column(Date)
 
 class BasicLogin(Base):
     __tablename__ = 'basic_logins'
@@ -45,7 +56,7 @@ class BasicLogin(Base):
     verification_sent = Column(Boolean)
     verified = Column(Boolean)
 
-    profile = relationship('Profile', backref=backref('profiles', uselist=False), foreign_keys=[profile_id])
+    profile = relationship('Profile', back_populates='basic_login')
 
 class ForeignLogin(Base):
     __tablename__ = 'foreign_logins'
@@ -66,12 +77,26 @@ class Group(Base):
     coordinator_id = Column(Integer, ForeignKey('profiles.id'))
     coordinator = relationship('Profile', backref=backref('owned_group', uselist=False), foreign_keys=[coordinator_id])
 
+    members = relationship('Profile', back_populates='group', foreign_keys=[Profile.group_id])
+
     group_requests = relationship('GroupJoinRequest', back_populates='group')
+
+    avatar_id = Column(Integer, ForeignKey('group_avatars.id'), nullable=True)
+    avatar = relationship('GroupAvatar', backref=backref('group', uselist=False), cascade='all, delete')
 
     name = Column(String)
     graduation_year = Column(Integer)
     date_created = Column(Date)
 
+#   This model will be used for profile pictures
+class GroupAvatar(Base):
+    __tablename__ = 'group_avatars'
+
+    id = Column(Integer, primary_key=True)
+
+    saved_path = Column(String)
+    filename = Column(String)
+    date_added = Column(Date)
 
 class GroupJoinRequest(Base):   
     __tablename__ = 'group_requests'
@@ -97,6 +122,9 @@ class Notification(Base):
     __tablename__ = 'notifications'
 
     id = Column(Integer, primary_key=True)
+
+    profile_id = Column(Integer, ForeignKey(Profile.id))
+    author = relationship('Profile', back_populates='notifications_authored')
 
     content = Column(String(200))
     date_sent = Column(DateTime)
@@ -201,4 +229,17 @@ class CommentReport(Base):
 
     reason = Column(Text)
     date_added = Column(Date)
+
+
+@event.listens_for(Attachment, 'after_delete')
+def receive_after_delete(mapper, connection, target):
+    remove_file(getattr(target, 'saved_path'))
+
+@event.listens_for(ProfileAvatar, 'after_delete')
+def receive_after_delete(mapper, connection, target):
+    remove_file(getattr(target, 'saved_path'))
+
+@event.listens_for(GroupAvatar, 'after_delete')
+def receive_after_delete(mapper, connection, target):
+    remove_file(getattr(target, 'saved_path'))
 

@@ -1,11 +1,8 @@
-import re
-from pydantic.networks import HttpUrl
-from pydantic.schema import schema
 from sqlalchemy.orm import Session, query
-from starlette.status import HTTP_404_NOT_FOUND
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 from . import schemas, models
 from .. import settings
-from ..utils import filter_from_schema, sort_from_schema
+from ..utils import filter_from_schema, sort_from_schema, save_generic_attachment, delete_generic_attachment
 from datetime import date, datetime
 from passlib.context import CryptContext
 from fastapi import status, HTTPException, UploadFile
@@ -38,7 +35,7 @@ def read_profile_by_id(db: Session, id: int):
     
     return profile
 
-def read_profile_by_email(db: Session, email: str):
+def read_profile_by_email(db: Session, email: str) -> models.Profile:
     login = db.query(models.BasicLogin).filter(models.BasicLogin.email == email).first()
     return login.profile
 
@@ -190,6 +187,19 @@ def read_notifications_by_recipient(db: Session, profile_id: int):
     
     return notifications
 
+def filter_authored_notifications(db: Session, profile: models.Profile, sorts: schemas.NotificationSorts):
+    notifications = db.query(models.Notification).filter(models.Notification.author == profile)
+    notifications = sort_from_schema(notifications, sorts)
+    return notifications.all()
+
+def read_notification_by_id(db: Session, id: int):
+    notification = db.query(models.Notification).filter(models.Notification.id == id).first()
+
+    if notification is None:
+        raise HTTPException(HTTP_404_NOT_FOUND, 'Notification with this id was not found')
+    
+    return notification
+
 def update_notification(db: Session, instance: models.Notification, notfification: schemas.NotificationIn):
     instance.content = notfification.content
     
@@ -215,12 +225,7 @@ def delete_notification(db: Session, instance: models.Notification):
 #
 
 async def create_attachment(db: Session, attachment: schemas.AttachmentIn, file: UploadFile):
-    generated_path = settings.ATTACHMENT_PATH + (split := file.filename.split('.')[0]) + str(datetime.now()) + split[1]
-
-    with aiofiles.open(generated_path, 'wb') as aio_file:
-        content = await file.read()
-        await aio_file.write(content)
-
+    generated_path = await save_generic_attachment(file)
 
     attachment_obj = models.Attachment(
         reflection_id = attachment.reflection_id,
@@ -246,10 +251,74 @@ def delete_attachment(db: Session, id: int):
     os.remove(attachment.saved_path)
 
 #
+#   Profile Avatar CRUD
+#
+
+async def create_profile_avatar(db: Session, avatar: schemas.AvatarIn, profile: models.Profile, file: UploadFile):
+    if profile.avatar is not None:
+        raise HTTPException(HTTP_400_BAD_REQUEST, 'Avatar already present, use PUT')
+
+    generated_path, id = await save_generic_attachment(file)
+
+    avatar_obj = models.ProfileAvatar(
+        id=str(id),
+        filename = avatar.filename,
+        saved_path = generated_path,
+        date_added = date.today()
+    )
+
+    profile.avatar = avatar_obj
+
+    db.add(avatar_obj)
+    db.commit()
+    db.refresh(avatar_obj)
+    return avatar_obj
+
+async def update_profile_avatar(db: Session, avatar: schemas.AvatarIn, profile: models.Profile, file: UploadFile):
+    generated_path, id = await save_generic_attachment(file)
+
+    avatar_obj = models.ProfileAvatar(
+        id=str(id),
+        filename = avatar.filename,
+        saved_path = generated_path,
+        date_added = date.today()
+    )
+
+    db.delete(profile.avatar)
+    profile.avatar = avatar_obj
+    db.commit()
+    db.refresh(avatar_obj)
+
+    return avatar_obj
+
+def delete_profile_avatar(db: Session, profile: models.Profile):
+    if profile.avatar is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, 'Profile does not have avatar')
+
+    if not os.path.exists(profile.avatar.saved_path):
+        raise HTTPException(status.HTTP_409_CONFLICT, 'The attachment is not available.')
+
+    db.delete(profile.avatar)
+    db.commit()
+
+    return {
+        'detail': 'Successfully deleted the profile\'s avatar'
+    }
+
+#
 #   Reflections CRUD
 #
 
 def create_reflection(db: Session, profile_id: int, reflection: schemas.ReflectionIn):
+    tags_list = []
+
+    for tag in reflection.tags:
+        if read_tag_by_name(db, tag.name) is None:
+            create_tag(db, tag)
+
+        retrieved_tag = read_tag_by_name(db, tag.name)
+        tags_list.append(retrieved_tag)
+
     reflection_obj = models.Reflection(
         profile_id = profile_id,
         title = reflection.title,
@@ -258,26 +327,35 @@ def create_reflection(db: Session, profile_id: int, reflection: schemas.Reflecti
         date_added = datetime.now(),
         creativity = reflection.creativity,
         activity = reflection.activity,
-        service = reflection.service
+        service = reflection.service,
+        tags = tags_list
     )
+
+    
 
     db.add(reflection_obj)
     db.commit()
     db.refresh(reflection_obj)
+
     return reflection_obj
 
-def read_reflection(db: Session, slug: str = None, id: int = None):
-    if slug is not None:
-        reflection = db.query(models.Reflection).filter(models.Reflection.slug == slug).first()
-    if id is not None:
-        reflection = db.query(models.Reflection).filter(models.Reflection.id == id).first()
+#The profile is required for annotating the model with information whether a reflection is favourited
+def read_reflection_by_id(db: Session, id: int, profile: models.Profile):
+    reflection = db.query(models.Reflection).filter(models.Reflection.id == id).first()
 
     if reflection is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, 'Reflection with this slug does not exist')
+        raise HTTPException(HTTP_404_NOT_FOUND, 'Reflection not found')
+
+    reflection.is_favourite = True if profile in reflection.favouritees else False
 
     return reflection
 
-#def filter_reflections(db: Session, filters, sorts):
+def filter_reflections(db: Session, filters: schemas.ReflectionFilters, sorts: schemas.ReflectionSorts):
+    query = db.query(models.Reflection)
+    query = filter_from_schema(query, filters)
+    query = sort_from_schema(query, sorts)
+
+    return query.all()
     
 
 def update_reflection(db: Session, instance: models.Reflection, reflection: schemas.ReflectionIn):
@@ -287,12 +365,42 @@ def update_reflection(db: Session, instance: models.Reflection, reflection: sche
     instance.activity = reflection.activity
     instance.service = reflection.service
 
+    tags_list = []
+
+    for tag in reflection.tags:
+        if read_tag_by_name(db, tag.name) is None:
+            create_tag(db, tag)
+
+        retrieved_tag = read_tag_by_name(db, tag.name)
+        tags_list.append(retrieved_tag)
+            
+    instance.tags = tags_list
+
     db.commit()
     db.refresh(instance)
     return instance
 
 def delete_reflection(db: Session, instance: models.Reflection):
     db.delete(instance)
+    db.commit()
+
+
+#
+#   Favourites CRUD
+#
+
+def create_favourite(db: Session, reflection: models.Reflection, profile: models.Profile):
+    if profile not in reflection.favouritees:
+        reflection.favouritees.append(profile)
+
+    db.commit()
+
+def delete_favourite(db: Session, reflection: models.Reflection, profile: models.Profile):
+    if profile in reflection.favouritees:
+        reflection.favouritees.remove(profile)
+    else:
+        raise HTTPException(HTTP_400_BAD_REQUEST, 'Cannot delete a favourite which does not exist')
+    
     db.commit()
 
 #
@@ -310,11 +418,11 @@ def create_tag(db: Session, tag: schemas.TagIn):
     db.refresh(tag_obj)
     return tag_obj
 
+def read_tags(db: Session):
+    return db.query(models.Tag).all()
+
 def read_tag_by_name(db: Session, name: str):
     retrieved = db.query(models.Tag).filter(models.Tag.name == name).first()
-
-    if retrieved is None:
-        raise HTTPException(404, 'Tag with this name was not found')
 
     return retrieved
 
@@ -355,6 +463,12 @@ def read_comments_by_reflection_id(db: Session, reflection_id: int):
     
     return comments
 
+def filter_reflection_comments(db: Session, reflection_id: int, sorts: schemas.CommentSorts):
+    query = db.query(models.Comment).filter(models.Comment.reflection_id == reflection_id)
+    query = sort_from_schema(query, schemas.CommentSorts)
+    
+    return query.all()
+
 def update_comment(db: Session, instance: models.Comment, comment: schemas.CommentIn):
     instance.content = comment.content
 
@@ -380,6 +494,10 @@ def create_reflection_report(db: Session, reflection_id: int, report: schemas.Re
     db.commit()
     db.refresh(report_obj)
     return report_obj
+
+def filter_reflection_reports(db: Session, sorts: schemas.ReflectionReportSorts):
+    query = sort_from_schema(db.query(models.CommentReport), sorts)
+    return query.all()
 
 def read_reflection_report_by_id(db: Session, id: int):
     report = db.query(models.ReflectionReport).filter(models.ReflectionReport.id == id).first()
@@ -420,6 +538,10 @@ def create_comment_report(db: Session, comment_id: int, report: schemas.CommentR
     db.commit()
     db.refresh(report_obj)
     return report_obj
+
+def filter_comment_reports(db: Session, sorts: schemas.CommentReportSorts):
+    query = sort_from_schema(db.query(models.ReflectionReport), sorts)
+    return query.all()
 
 def read_comment_report_by_id(db: Session, id: int):
     report = db.query(models.CommentReport).filter(models.CommentReport.id == id).first()

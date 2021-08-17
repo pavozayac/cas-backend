@@ -2,15 +2,22 @@ from .utils import CREDENTIALS_EXCEPTION
 from sqlalchemy.orm.session import Session
 from fastapi import FastAPI, Depends, HTTPException, status
 from .resources.schemas import ProfileIn
-from .database import engine
+from .database import engine, Base
 from .dependencies import get_database, LoginAuth
 from typing import List
+from os import path, makedirs
+from app import settings
 
 from .resources import models, crud, schemas
 
-from .routers import auth, profiles, post_notifications, groups
+from .routers import auth, profiles, notifications, groups, reflections, tags
 
 api = FastAPI()
+
+Base.metadata.create_all(bind=engine)
+
+if not path.exists(settings.ATTACHMENT_PATH):
+    makedirs(settings.ATTACHMENT_PATH)
 
 api.include_router(
     auth.router,
@@ -25,7 +32,7 @@ api.include_router(
 )
 
 api.include_router(
-    post_notifications.router,
+    notifications.router,
     prefix='/post-notifications',
     tags=['post_notifications']
 )
@@ -36,7 +43,18 @@ api.include_router(
     tags=['groups']
 )
 
-models.Base.metadata.create_all(bind=engine)
+api.include_router(
+    reflections.router,
+    prefix='/reflections',
+    tags=['reflections']
+)
+
+api.include_router(
+    tags.router,
+    prefix='/tags',
+    tags=['tags']
+)
+
 
 @api.get('/bruh', response_model=schemas.Profile)
 async def root(profile: models.Profile = Depends(LoginAuth)):

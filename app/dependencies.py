@@ -1,9 +1,9 @@
+from sqlalchemy.engine.interfaces import CreateEnginePlugin
 from .resources.models import Profile
 from fastapi.param_functions import Depends
-from app.resources.crud import read_profile_by_email
+from .resources import crud
 from typing import Optional
 
-from jose.constants import ALGORITHMS
 from .database import SessionLocal
 from fastapi import Cookie
 from jose import jwt, JWTError
@@ -30,13 +30,16 @@ def LoginAuth(auth: Optional[str] = Cookie(None), db: Session = Depends(get_data
     except JWTError:
         raise CREDENTIALS_EXCEPTION('Decoding failed')
     
-    profile = read_profile_by_email(db, email)
+    profile = crud.read_profile_by_email(db, email)
 
     if profile is None:
         raise CREDENTIALS_EXCEPTION('Associated profile not found')
     return profile
 
 def ModeratorAuth(profile: Profile = Depends(LoginAuth)):
-    if profile.is_moderator != True:
-        raise CREDENTIALS_EXCEPTION(detail='Invalid permissions')
+    if not profile.is_moderator and not profile.is_admin:
+        raise CREDENTIALS_EXCEPTION('Insufficient permissions')
 
+def AdminAuth(profile: Profile = Depends(LoginAuth)):
+    if not profile.is_admin:
+        raise CREDENTIALS_EXCEPTION('Insufficient permissions')
