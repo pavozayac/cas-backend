@@ -135,6 +135,71 @@ def delete_group(db: Session, instance: models.Group):
     db.delete(instance)
     db.commit()
 
+
+#
+#   Group Avatar CRUD
+#
+
+async def create_group_avatar(db: Session, avatar: schemas.AvatarIn, group: models.Profile, file: UploadFile):
+    if group.avatar is not None:
+        raise HTTPException(HTTP_400_BAD_REQUEST, 'Avatar already present, use PUT')
+
+    generated_path, id = await save_generic_attachment(file)
+
+    avatar_obj = models.GroupAvatar(
+        id=str(id),
+        filename = avatar.filename,
+        saved_path = generated_path,
+        date_added = date.today()
+    )
+
+    group.avatar = avatar_obj
+
+    db.add(avatar_obj)
+    db.commit()
+    db.refresh(avatar_obj)
+    return avatar_obj
+
+def read_group_avatar(db: Session, id: str):
+    avatar = db.query(models.GroupAvatar).filter(id==id).first()
+
+    if avatar is None:
+        raise HTTPException(HTTP_404_NOT_FOUND, 'Avatar not found')
+
+    return avatar
+
+
+async def update_group_avatar(db: Session, avatar: schemas.AvatarIn, group: models.Profile, file: UploadFile):
+    generated_path, id = await save_generic_attachment(file)
+
+    if not os.path.exists(group.avatar.saved_path):
+        raise HTTPException(status.HTTP_409_CONFLICT, 'The attachment is not available.')
+
+    avatar_obj = models.ProfileAvatar(
+        id=str(id),
+        filename = avatar.filename,
+        saved_path = generated_path,
+        date_added = date.today()
+    )
+
+    db.delete(group.avatar)
+    group.avatar = avatar_obj
+    db.commit()
+    db.refresh(avatar_obj)
+
+    return avatar_obj
+
+def delete_group_avatar(db: Session, group: models.Profile):
+    if group.avatar is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, 'Profile does not have avatar')
+
+    if not os.path.exists(group.avatar.saved_path):
+        raise HTTPException(status.HTTP_409_CONFLICT, 'The attachment is not available.')
+
+    db.delete(group.avatar)
+    db.commit()
+
+
 #   
 #   GroupJoinRequests CRUD
 #
@@ -221,36 +286,6 @@ def delete_notification(db: Session, instance: models.Notification):
     db.commit()
 
 #
-#   Attachment CRUD
-#
-
-async def create_attachment(db: Session, attachment: schemas.AttachmentIn, file: UploadFile):
-    generated_path = await save_generic_attachment(file)
-
-    attachment_obj = models.Attachment(
-        reflection_id = attachment.reflection_id,
-        filename = attachment.filename,
-        saved_path = generated_path,
-        date_added = date.today()
-    )
-
-    db.add(attachment_obj)
-    db.commit()
-    db.refresh(attachment_obj)
-    return attachment_obj
-
-def delete_attachment(db: Session, id: int):
-    attachment = db.query(models.Attachment).filter(models.Attachment.id == id).first()
-
-    if attachment is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, 'Attachment was not found')
-
-    if not os.path.exists(attachment.saved_path):
-        raise HTTPException(status.HTTP_409_CONFLICT, 'The attachment is not available.')
-
-    os.remove(attachment.saved_path)
-
-#
 #   Profile Avatar CRUD
 #
 
@@ -274,8 +309,20 @@ async def create_profile_avatar(db: Session, avatar: schemas.AvatarIn, profile: 
     db.refresh(avatar_obj)
     return avatar_obj
 
+def read_profile_avatar(db: Session, id: str):
+    avatar = db.query(models.ProfileAvatar).filter(id==id).first()
+
+    if avatar is None:
+        raise HTTPException(HTTP_404_NOT_FOUND, 'Avatar not found')
+
+    return avatar
+
+
 async def update_profile_avatar(db: Session, avatar: schemas.AvatarIn, profile: models.Profile, file: UploadFile):
     generated_path, id = await save_generic_attachment(file)
+
+    if not os.path.exists(profile.avatar.saved_path):
+        raise HTTPException(status.HTTP_409_CONFLICT, 'The attachment is not available.')
 
     avatar_obj = models.ProfileAvatar(
         id=str(id),
@@ -300,10 +347,6 @@ def delete_profile_avatar(db: Session, profile: models.Profile):
 
     db.delete(profile.avatar)
     db.commit()
-
-    return {
-        'detail': 'Successfully deleted the profile\'s avatar'
-    }
 
 #
 #   Reflections CRUD
@@ -384,6 +427,38 @@ def delete_reflection(db: Session, instance: models.Reflection):
     db.delete(instance)
     db.commit()
 
+#
+#   Reflection Attachment CRUD
+#
+
+async def create_reflection_attachment(db: Session, attachment: schemas.AttachmentIn, file: UploadFile):
+    generated_path, id = await save_generic_attachment(file)
+
+    attachment_obj = models.Attachment(
+        id=str(id)
+        **attachment.dict(),
+        saved_path=generated_path
+    )
+
+    db.add(attachment_obj)
+    db.commit()
+    db.refresh(attachment_obj)
+    return attachment_obj
+
+def read_reflection_attachment(db: Session, id: str):
+    attachment = db.query(models.Attachment).filter(id==id).first()
+
+    if attachment is None:
+        raise HTTPException(HTTP_404_NOT_FOUND, 'Attachment not found')
+
+    if not os.path.exists(attachment.saved_path):
+        raise HTTPException(status.HTTP_409_CONFLICT, 'The attachment is not available.')
+
+    return attachment
+
+def delete_reflection_attachment(db: Session, attachment: models.Attachment):
+    db.delete(attachment)
+    db.commit()
 
 #
 #   Favourites CRUD

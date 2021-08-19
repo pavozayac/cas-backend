@@ -8,10 +8,15 @@ from ..dependencies import LoginAuth, get_database
 from ..utils import check_object_ownership, filter_from_schema, sort_from_schema, check_access_from_visibility
 from ..resources import schemas, models, crud
 from sqlalchemy.orm.session import Session
+from fastapi.responses import FileResponse
 
 from typing import List, Optional
 
 router = APIRouter()
+
+#
+#   Queries, that is advanced search and filtering, sorting
+#
 
 @router.post('/query', response_model=List[schemas.Reflection])
 async def filter_reflections(filters: schemas.ReflectionFilters, sorts: schemas.ReflectionSorts, db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
@@ -24,17 +29,13 @@ async def filter_reflections(filters: schemas.ReflectionFilters, sorts: schemas.
 
     return reflections
 
+#
+#   CRUD actions for reflections
+#
+
 @router.post('/', response_model=schemas.Reflection)
 async def post_reflection(reflection: schemas.ReflectionIn, db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
     return crud.create_reflection(db, profile.id, reflection)
-
-@router.post('/{id}/add-attachment', response_model=schemas.Attachment)
-async def add_attachment(id: int, file: List[UploadFile] = File(...), db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
-    reflection = crud.read_reflection_by_id(db, id, profile)
-
-    attachment = schemas.AttachmentIn(reflection_id = reflection.id, filename = file.filename)
-
-    return attachment    
 
 @router.get('/{id}', response_model=schemas.Reflection)
 async def get_reflection_by_id(id: int, db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
@@ -65,6 +66,22 @@ async def delete_reflection(id: int, db: Session = Depends(get_database), profil
         'detail': 'Successfully deleted reflection'
     }
 
+#
+#   Advanced queries for comments
+#
+
+@router.post('/{id}/comments/query', response_model=List[schemas.Comment])
+async def get_reflection_comments(id: int, sorts: schemas.CommentSorts, db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
+    reflection = crud.read_reflection_by_id(db, id, profile)
+
+    check_access_from_visibility(reflection, profile)
+
+    return crud.filter_reflection_comments(db, id, sorts)
+
+#
+#   CRUD actions for comments
+#
+
 @router.post('/{id}/comments', response_model=schemas.Comment)
 async def post_comment(id: int, comment: schemas.CommentIn, db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
     reflection = crud.read_reflection_by_id(db, id, profile)
@@ -74,14 +91,6 @@ async def post_comment(id: int, comment: schemas.CommentIn, db: Session = Depend
     return crud.create_comment(db, profile.id, reflection.id, comment)
 
 
-
-@router.post('/{id}/comments/query', response_model=List[schemas.Comment])
-async def get_reflection_comments(id: int, sorts: schemas.CommentSorts, db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
-    reflection = crud.read_reflection_by_id(db, id, profile)
-
-    check_access_from_visibility(reflection, profile)
-
-    return crud.filter_reflection_comments(db, id, sorts)
 
 @router.get('/{reflection_id}/comments/{comment_id}', response_model=schemas.Comment)
 async def get_comment_by_id(reflection_id: int, comment_id: int, db: Session = Depends(get_database), profile = Depends(LoginAuth)):
@@ -102,6 +111,10 @@ async def delete_comment(comment_id: int, db: Session = Depends(get_database), p
     return {
         'detail': 'Successfully deleted comment'
     }
+
+#
+#   Favourites actions
+#
 
 @router.post('/{reflecion_id}/favourite')
 async def favourite_reflection(reflection_id: int, db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
@@ -129,3 +142,42 @@ async def unfavourite_reflection(reflection_id: int, db: Session = Depends(get_d
         'detail': 'Successfully unfavourited reflection'
     }
 
+#
+#   Attachments CRUD
+#
+
+@router.get('/{id}/attachment/{uuid}')
+async def get_attachment(id: int, uuid: str, db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
+    reflection = crud.read_reflection_by_id(db, id, profile)
+    check_access_from_visibility(reflection, profile)
+
+    attachment = crud.read_reflection_attachment(db, uuid)
+
+    return FileResponse(attachment.saved_path)
+
+
+@router.post('/{id}/attachment', response_model=schemas.Attachment)
+async def add_attachment(id: int, file: UploadFile = File(...), db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
+    reflection = crud.read_reflection_by_id(db, id, profile)
+    check_object_ownership(reflection, profile)
+
+    attachment_in = schemas.AttachmentIn(
+        reflection_id=id,
+        filename=file.filename
+    )
+
+    attachment = crud.create_reflection_attachment(db, attachment_in, file)
+
+    return attachment
+
+@router.delete('/{id}/attachment/{uuid}')
+async def delete_attachment(id: int, uuid: str, db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
+    reflection = crud.read_reflection_by_id(db, id, profile)
+    check_object_ownership(reflection, profile)
+
+    attachment = crud.read_reflection_attachment(db, uuid)
+    crud.delete_reflection_attachment(db, attachment)
+
+    return {
+        'detail': 'Successfully deleted reflection attachment'
+    }

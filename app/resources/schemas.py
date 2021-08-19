@@ -71,7 +71,7 @@ class Profile(ProfileBase):
     group_id: Optional[int]
     date_joined: date
     post_visibility: int
-    avatar: Avatar
+    avatar: Optional[Avatar]
 
     class Config:
         orm_mode = True
@@ -163,6 +163,7 @@ class GroupIn(GroupBase):
 
 class Group(GroupBase):
     date_created: date
+    avatar: Optional[Avatar]
 
     class Config:
         orm_mode = True

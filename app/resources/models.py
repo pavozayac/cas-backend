@@ -145,7 +145,7 @@ tags_reflections = Table('tags_reflections', Base.metadata,
 class Attachment(Base):
     __tablename__ = 'attachments'
 
-    id = Column(Integer, primary_key=True)
+    id = Column(String, primary_key=True)
 
     reflection_id = Column(Integer, ForeignKey('reflections.id'))
     reflection = relationship('Reflection', back_populates='attachments')

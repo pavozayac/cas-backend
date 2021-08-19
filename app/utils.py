@@ -23,7 +23,7 @@ def CREDENTIALS_EXCEPTION(detail = 'Invalid credentials'):
         detail=detail
     )
 
-def check_object_ownership(object, field: str, profile: models.Profile):
+def check_object_ownership(object, profile: models.Profile, field: str = 'profile_id'):
     if getattr(object, field) != profile.id and not profile.is_moderator and not profile.is_admin:
         raise CREDENTIALS_EXCEPTION('Invalid ownership')
 
