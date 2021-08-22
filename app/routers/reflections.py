@@ -4,11 +4,12 @@ from fastapi.datastructures import UploadFile
 from fastapi.exceptions import HTTPException
 from fastapi.param_functions import File
 from sqlalchemy.sql.schema import CheckConstraint
-from ..dependencies import LoginAuth, get_database
 from ..utils import check_object_ownership, filter_from_schema, sort_from_schema, check_access_from_visibility
 from ..resources import schemas, models, crud
 from sqlalchemy.orm.session import Session
 from fastapi.responses import FileResponse
+from ..database import Database
+from .auth import LoginAuth
 
 from typing import List, Optional
 
@@ -19,7 +20,7 @@ router = APIRouter()
 #
 
 @router.post('/query', response_model=List[schemas.Reflection])
-async def filter_reflections(filters: schemas.ReflectionFilters, sorts: schemas.ReflectionSorts, db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
+async def filter_reflections(filters: schemas.ReflectionFilters, sorts: schemas.ReflectionSorts, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     reflections = crud.filter_reflections(db, filters, sorts)
     for reflection in reflections:
         try:
@@ -34,11 +35,11 @@ async def filter_reflections(filters: schemas.ReflectionFilters, sorts: schemas.
 #
 
 @router.post('/', response_model=schemas.Reflection)
-async def post_reflection(reflection: schemas.ReflectionIn, db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
+async def post_reflection(reflection: schemas.ReflectionIn, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     return crud.create_reflection(db, profile.id, reflection)
 
 @router.get('/{id}', response_model=schemas.Reflection)
-async def get_reflection_by_id(id: int, db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
+async def get_reflection_by_id(id: int, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     reflection = crud.read_reflection_by_id(db, id, profile)
     print(reflection.tags)
 
@@ -47,7 +48,7 @@ async def get_reflection_by_id(id: int, db: Session = Depends(get_database), pro
     return reflection
 
 @router.put('/{id}', response_model=schemas.Reflection)
-async def update_reflection(id: int, data: schemas.ReflectionIn, db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
+async def update_reflection(id: int, data: schemas.ReflectionIn, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     reflection = crud.read_reflection_by_id(db, id, profile)
 
     check_object_ownership(reflection, 'profile_id', profile)
@@ -55,7 +56,7 @@ async def update_reflection(id: int, data: schemas.ReflectionIn, db: Session = D
     return crud.update_reflection(db, reflection, data)
 
 @router.delete('/{id}')
-async def delete_reflection(id: int, db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
+async def delete_reflection(id: int, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     reflection = crud.read_reflection_by_id(db, id, profile)
 
     check_object_ownership(reflection, 'profile_id', profile)
@@ -71,7 +72,7 @@ async def delete_reflection(id: int, db: Session = Depends(get_database), profil
 #
 
 @router.post('/{id}/comments/query', response_model=List[schemas.Comment])
-async def get_reflection_comments(id: int, sorts: schemas.CommentSorts, db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
+async def get_reflection_comments(id: int, sorts: schemas.CommentSorts, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     reflection = crud.read_reflection_by_id(db, id, profile)
 
     check_access_from_visibility(reflection, profile)
@@ -83,7 +84,7 @@ async def get_reflection_comments(id: int, sorts: schemas.CommentSorts, db: Sess
 #
 
 @router.post('/{id}/comments', response_model=schemas.Comment)
-async def post_comment(id: int, comment: schemas.CommentIn, db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
+async def post_comment(id: int, comment: schemas.CommentIn, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     reflection = crud.read_reflection_by_id(db, id, profile)
 
     check_access_from_visibility(reflection, profile)
@@ -93,7 +94,7 @@ async def post_comment(id: int, comment: schemas.CommentIn, db: Session = Depend
 
 
 @router.get('/{reflection_id}/comments/{comment_id}', response_model=schemas.Comment)
-async def get_comment_by_id(reflection_id: int, comment_id: int, db: Session = Depends(get_database), profile = Depends(LoginAuth)):
+async def get_comment_by_id(reflection_id: int, comment_id: int, db: Session = Depends(Database), profile = Depends(LoginAuth)):
     reflection = crud.read_reflection_by_id(db, reflection_id, profile)
 
     check_access_from_visibility(reflection, profile)
@@ -101,7 +102,7 @@ async def get_comment_by_id(reflection_id: int, comment_id: int, db: Session = D
     return crud.read_comment_by_id(db, comment_id)
 
 @router.delete('/{reflection_id}/comments/{comment_id}')
-async def delete_comment(comment_id: int, db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
+async def delete_comment(comment_id: int, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     comment = crud.read_comment_by_id(db, comment_id)
 
     check_object_ownership(comment, 'profile_id', profile)
@@ -117,7 +118,7 @@ async def delete_comment(comment_id: int, db: Session = Depends(get_database), p
 #
 
 @router.post('/{reflecion_id}/favourite')
-async def favourite_reflection(reflection_id: int, db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
+async def favourite_reflection(reflection_id: int, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     reflection = crud.read_reflection_by_id(db, reflection_id, profile)
 
     check_access_from_visibility(reflection, profile)
@@ -131,7 +132,7 @@ async def favourite_reflection(reflection_id: int, db: Session = Depends(get_dat
 
     
 @router.delete('/{reflection_id}/favourite')
-async def unfavourite_reflection(reflection_id: int, db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
+async def unfavourite_reflection(reflection_id: int, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     reflection = crud.read_reflection_by_id(db, reflection_id, profile)
 
     check_access_from_visibility(reflection, profile)
@@ -147,7 +148,7 @@ async def unfavourite_reflection(reflection_id: int, db: Session = Depends(get_d
 #
 
 @router.get('/{id}/attachment/{uuid}')
-async def get_attachment(id: int, uuid: str, db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
+async def get_attachment(id: int, uuid: str, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     reflection = crud.read_reflection_by_id(db, id, profile)
     check_access_from_visibility(reflection, profile)
 
@@ -157,7 +158,7 @@ async def get_attachment(id: int, uuid: str, db: Session = Depends(get_database)
 
 
 @router.post('/{id}/attachment', response_model=schemas.Attachment)
-async def add_attachment(id: int, file: UploadFile = File(...), db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
+async def add_attachment(id: int, file: UploadFile = File(...), db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     reflection = crud.read_reflection_by_id(db, id, profile)
     check_object_ownership(reflection, profile)
 
@@ -171,7 +172,7 @@ async def add_attachment(id: int, file: UploadFile = File(...), db: Session = De
     return attachment
 
 @router.delete('/{id}/attachment/{uuid}')
-async def delete_attachment(id: int, uuid: str, db: Session = Depends(get_database), profile: models.Profile = Depends(LoginAuth)):
+async def delete_attachment(id: int, uuid: str, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     reflection = crud.read_reflection_by_id(db, id, profile)
     check_object_ownership(reflection, profile)
 

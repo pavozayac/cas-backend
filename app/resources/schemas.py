@@ -92,8 +92,9 @@ class ProfileSorts(BaseModel):
     post_visibility: Optional[str]
     last_online: Optional[str]
     first_name: Optional[str]
+
 #
-# BasicLogin schemas
+#   BasicLogin schemas
 #
 
 class BasicLoginBase(BaseModel):
@@ -146,7 +147,7 @@ class ForeignLogin(ForeignLoginBase):
 #
 
 class Token(BaseModel):
-    token: str
+    access_token: str
     token_type: str
 
 #

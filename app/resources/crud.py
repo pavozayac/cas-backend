@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session, query
+from sqlalchemy.orm.relationships import foreign
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 from . import schemas, models
 from .. import settings
@@ -35,9 +36,23 @@ def read_profile_by_id(db: Session, id: int):
     
     return profile
 
-def read_profile_by_email(db: Session, email: str) -> models.Profile:
+def read_profile_by_email(db: Session, email: str):
     login = db.query(models.BasicLogin).filter(models.BasicLogin.email == email).first()
+
+    if login is None:
+        raise HTTPException(HTTP_404_NOT_FOUND, 'Profile not found')
+
     return login.profile
+
+
+def read_profile_by_foreign_email(db: Session, email: str):
+    login = db.query(models.ForeignLogin).filter(models.ForeignLogin.email == email).first()
+
+    if login is None:
+        raise HTTPException(HTTP_404_NOT_FOUND, 'Profile not found')
+        
+    return login.profile
+
 
 def filter_profiles(db: Session, filters: schemas.ProfileFilters, sorts: schemas.ProfileSorts):
     search = db.query(models.Profile)
@@ -94,6 +109,27 @@ def read_basic_login_by_email(db: Session, email: str):
 #
 #   ForeignLogin CRUD !!! TODO
 #
+
+def create_foreign_login(db: Session, email: str, profile_id: int, foreign_id: str, provider: str):
+    foreign_login = models.ForeignLogin(
+        profile_id=profile_id,
+        foreign_id=foreign_id,
+        email=email,
+        provider=provider
+    )
+
+    db.add(foreign_login)
+    db.commit()
+    db.refresh(foreign_login)
+    return foreign_login
+
+def read_foreign_login(db: Session, foreign_id: str):
+    foreign_login = db.query(models.ForeignLogin).filter(models.ForeignLogin.foreign_id == foreign_id).first()
+
+    if foreign_login is None:
+        raise HTTPException(HTTP_404_NOT_FOUND, 'Foreign login with this id was not found')
+
+    return foreign_login
 
 #
 #   Group CRUD

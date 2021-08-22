@@ -2,8 +2,8 @@ from .utils import CREDENTIALS_EXCEPTION
 from sqlalchemy.orm.session import Session
 from fastapi import FastAPI, Depends, HTTPException, status
 from .resources.schemas import ProfileIn
-from .database import engine, Base
-from .dependencies import get_database, LoginAuth
+from .database import engine, Base, Database
+from .routers.auth import LoginAuth
 from typing import List
 from os import path, makedirs
 from app import settings
@@ -21,7 +21,7 @@ if not path.exists(settings.ATTACHMENT_PATH):
 
 api.include_router(
     auth.router,
-    prefix='/auth',
+    prefix='',
     tags=['auth']
 )
 
@@ -54,7 +54,6 @@ api.include_router(
     prefix='/tags',
     tags=['tags']
 )
-
 
 @api.get('/bruh', response_model=schemas.Profile)
 async def root(profile: models.Profile = Depends(LoginAuth)):

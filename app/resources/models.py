@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, String, Boolean, Date, Integer, Enum, DateTime, Table, Text, Unicode, event
+from sqlalchemy import Column, ForeignKey, String, Boolean, Date, Integer, Enum, DateTime, Table, Text, Unicode, event, JSON
 from sqlalchemy.orm import relationship, backref
 from os import remove as remove_file
 from ..database import Base
@@ -62,11 +62,13 @@ class ForeignLogin(Base):
     __tablename__ = 'foreign_logins'
 
     profile_id = Column(Integer, ForeignKey(Profile.id), primary_key=True)
+    
+    foreign_id = Column(String, primary_key=True)
 
-    access_token = Column(String)
-    expires_at = Column(Date)
-    # method = through Google or Facebook
-    method = Column(String)
+    email = Column(String)
+    #   This token is the token retrieved from the provider's OAuth service and includes data requested in scopes
+    # Provider = through Google or Facebook
+    provider = Column(String)
 
 
 class Group(Base):
