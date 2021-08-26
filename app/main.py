@@ -10,7 +10,7 @@ from app import settings
 
 from .resources import models, crud, schemas
 
-from .routers import auth, profiles, notifications, groups, reflections, tags
+from .routers import auth, profiles, notifications, groups, reflections, tags, messages
 
 api = FastAPI()
 
@@ -53,6 +53,12 @@ api.include_router(
     tags.router,
     prefix='/tags',
     tags=['tags']
+)
+
+api.include_router(
+    messages.router,
+    prefix='',
+    tags=['messages']
 )
 
 @api.get('/bruh', response_model=schemas.Profile)

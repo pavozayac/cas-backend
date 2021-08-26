@@ -2,7 +2,7 @@ from app.database import Base
 from typing import List, Optional
 
 from pydantic import BaseModel, Field, EmailStr, validator, ValidationError
-from datetime import date
+from datetime import date, datetime
 from ..resources import models
  
 #
@@ -347,3 +347,22 @@ class CommentReport(CommentReportBase):
 
 class CommentReportSorts(BaseModel):
     date_added: Optional[str]
+
+#
+#   Message schemas
+#
+
+class MessageBase(BaseModel):
+    sender_id: int
+    receiver_id: int
+    content: str
+
+class MessageIn(MessageBase):
+    pass
+
+class Message(MessageBase):
+    id: int
+    date_added: datetime
+
+    class Config:
+        orm_mode = True

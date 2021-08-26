@@ -482,7 +482,7 @@ async def create_reflection_attachment(db: Session, attachment: schemas.Attachme
     return attachment_obj
 
 def read_reflection_attachment(db: Session, id: str):
-    attachment = db.query(models.Attachment).filter(id==id).first()
+    attachment = db.query(models.Attachment).filter(id==id).one()
 
     if attachment is None:
         raise HTTPException(HTTP_404_NOT_FOUND, 'Attachment not found')
@@ -533,7 +533,7 @@ def read_tags(db: Session):
     return db.query(models.Tag).all()
 
 def read_tag_by_name(db: Session, name: str):
-    retrieved = db.query(models.Tag).filter(models.Tag.name == name).first()
+    retrieved = db.query(models.Tag).filter(models.Tag.name == name).one()
 
     return retrieved
 
@@ -559,7 +559,7 @@ def create_comment(db: Session, profile_id: int, reflection_id: int, comment: sc
     return comment_obj
 
 def read_comment_by_id(db: Session, id: int):
-    comment = db.query(models.Comment).filter(models.Comment.id == id).first()
+    comment = db.query(models.Comment).filter(models.Comment.id == id).one()
 
     if comment is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, 'Comment not found')
@@ -611,7 +611,7 @@ def filter_reflection_reports(db: Session, sorts: schemas.ReflectionReportSorts)
     return query.all()
 
 def read_reflection_report_by_id(db: Session, id: int):
-    report = db.query(models.ReflectionReport).filter(models.ReflectionReport.id == id).first()
+    report = db.query(models.ReflectionReport).filter(models.ReflectionReport.id == id).one()
 
     if report is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, 'Reflection report not found')
@@ -626,12 +626,7 @@ def read_reports_by_reflection_id(db: Session, reflection_id: int):
 
     return reports
 
-def delete_reflection_report(db: Session, id: int):
-    report = db.query(models.ReflectionReport).filter(models.ReflectionReport.id == id).first()
-
-    if report is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, 'Reflection report not found')
-
+def delete_reflection_report(db: Session, report: models.ReflectionReport):
     db.delete(report)
     db.commit()
 
@@ -655,7 +650,7 @@ def filter_comment_reports(db: Session, sorts: schemas.CommentReportSorts):
     return query.all()
 
 def read_comment_report_by_id(db: Session, id: int):
-    report = db.query(models.CommentReport).filter(models.CommentReport.id == id).first()
+    report = db.query(models.CommentReport).filter(models.CommentReport.id == id).one()
 
     if report is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, 'Reflection report not found')
@@ -670,11 +665,34 @@ def read_reports_by_comment_id(db: Session, comment_id: int):
 
     return reports
 
-def delete_comment_report(db: Session, id: int):
-    report = db.query(models.CommentReport).filter(models.CommentReport.id == id).first()
-
-    if report is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, 'Reflection report not found')
-
+def delete_comment_report(db: Session, report: models.CommentReport):
     db.delete(report)
+    db.commit()
+
+#
+#   Messages 
+#
+
+def create_message(db: Session, message: schemas.MessageIn):
+    message_object = models.Message(**message.dict())
+
+    db.add(message_object)
+    db.commit()
+    db.refresh(message_object)
+    return message_object
+
+def read_message_by_id(db: Session, id: int):
+    message = db.query(models.Message).filter(models.Message.id == id).one()
+
+    return message
+
+def read_message_by_receiver_id(db: Session, receiver_id: int):
+    messages = db.query(models.Message).filter(models.Message.receiver_id == receiver_id).all()
+
+    return messages
+
+def delete_message(db: Session, id: int):
+    message = db.query(models.Message).filter(models.Message.id == id).one()
+
+    db.delete(message)
     db.commit()

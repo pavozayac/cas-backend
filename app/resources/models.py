@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy import Column, ForeignKey, String, Boolean, Date, Integer, Enum, DateTime, Table, Text, Unicode, event, JSON
 from sqlalchemy.orm import relationship, backref
 from os import remove as remove_file
@@ -35,6 +36,9 @@ class Profile(Base):
 
     avatar_id = Column(Integer, ForeignKey('profile_avatars.id'), nullable=True, default=None)
     avatar = relationship('ProfileAvatar', backref=backref('profile', uselist=False), cascade='all, delete')
+
+    sent_messages = relationship('Message', back_populates='sender', foreign_keys='[Message.sender_id]')
+    received_messages = relationship('Message', back_populates='receiver', foreign_keys='[Message.receiver_id]')
 
 #   This model will be used for profile pictures
 class ProfileAvatar(Base):
@@ -231,6 +235,22 @@ class CommentReport(Base):
 
     reason = Column(Text)
     date_added = Column(Date)
+
+class Message(Base):
+    __tablename__ = 'messages'
+
+    id = Column(Integer, primary_key=True)
+
+    sender_id = Column(Integer, ForeignKey('profiles.id'))
+    sender = relationship(Profile, back_populates='sent_messages', foreign_keys=[sender_id])
+
+    receiver_id = Column(Integer, ForeignKey('profiles.id'))
+    receiver = relationship(Profile, back_populates='received_messages', foreign_keys=[receiver_id])
+
+    content = Column(Text(300))
+
+    datetime_sent = Column(DateTime, default=datetime.now())
+
 
 
 @event.listens_for(Attachment, 'after_delete')

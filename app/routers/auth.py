@@ -1,8 +1,9 @@
+from codecs import decode
 import hashlib
 from fastapi.exceptions import HTTPException
 from fastapi.security.oauth2 import OAuth2PasswordRequestFormStrict
 from jose.exceptions import ExpiredSignatureError
-from jose.jws import sign
+from jose.jws import sign, verify
 from ..resources.models import BasicLogin, Profile
 import datetime
 from fastapi import APIRouter, Depends, Response, Request
@@ -17,7 +18,6 @@ from ..settings import SECRET_KEY
 from ..resources import schemas
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import JWTError
-from authlib.integrations.starlette_client import OAuth
 from starlette.config import Config
 
 password_context = CryptContext(schemes=['bcrypt'])
@@ -30,10 +30,9 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl='login')
 #   Dependencies, to be injected in specific protected routes
 #
 
-def LoginAuth(auth: str = Depends(oauth2_scheme), db: Session = Depends(Database)):
-  
+def decode_token(token: str, db: Session):
     try:
-        payload = jwt.decode(auth, SECRET_KEY, algorithms=['HS256'])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'], issuer='casportal', audience='casportal')
         email: str = payload.get('sub')
 
         if email is None:
@@ -42,8 +41,15 @@ def LoginAuth(auth: str = Depends(oauth2_scheme), db: Session = Depends(Database
         raise CREDENTIALS_EXCEPTION('Token expired')
     except JWTError as error:
         raise CREDENTIALS_EXCEPTION(error)
+    except:
+        raise CREDENTIALS_EXCEPTION('Invalid JWT')
     
     profile = crud.read_profile_by_email(db, email)
+    
+    return profile
+
+def LoginAuth(auth: str = Depends(oauth2_scheme), db: Session = Depends(Database)):
+    profile = decode_token(auth, db)
 
     return profile
 
@@ -106,17 +112,7 @@ async def login(login: OAuth2PasswordRequestForm = Depends(), db: Session = Depe
 
 #
 #   Google authorization 
-# @router.post
-
-config = Config('.env')
-oauth = OAuth(config)
-oauth.register(
-    name='google',
-    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-    client_kwargs={
-        'scope': 'openid email profile'
-    }
-)
+#
 
 from google.oauth2 import id_token
 from google.auth.transport import requests
