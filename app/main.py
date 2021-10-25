@@ -7,6 +7,7 @@ from .routers.auth import LoginAuth
 from typing import List
 from os import path, makedirs
 from app import settings
+from fastapi.middleware.cors import CORSMiddleware
 
 from .resources import models, crud, schemas
 
@@ -18,6 +19,19 @@ Base.metadata.create_all(bind=engine)
 
 if not path.exists(settings.ATTACHMENT_PATH):
     makedirs(settings.ATTACHMENT_PATH)
+
+origins = [
+    'http://localhost:3000',
+    'http://localhost:5000'
+]
+
+api.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 api.include_router(
     auth.router,

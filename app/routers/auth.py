@@ -4,9 +4,10 @@ from fastapi.exceptions import HTTPException
 from fastapi.security.oauth2 import OAuth2PasswordRequestFormStrict
 from jose.exceptions import ExpiredSignatureError
 from jose.jws import sign, verify
+from starlette.responses import JSONResponse
 from ..resources.models import BasicLogin, Profile
 import datetime
-from fastapi import APIRouter, Depends, Response, Request
+from fastapi import APIRouter, Depends, Response, Request, Cookie
 from ..resources import crud
 from ..resources.schemas import BasicLoginIn, RegisterIn, BasicLoginSignIn, Token
 from ..database import Database
@@ -19,6 +20,7 @@ from ..resources import schemas
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import JWTError
 from starlette.config import Config
+from typing import Optional
 
 password_context = CryptContext(schemes=['bcrypt'])
 
@@ -48,8 +50,9 @@ def decode_token(token: str, db: Session):
     
     return profile
 
-def LoginAuth(auth: str = Depends(oauth2_scheme), db: Session = Depends(Database)):
-    profile = decode_token(auth, db)
+def LoginAuth(casportal_token: str = Cookie(None), db: Session = Depends(Database)):
+    print(casportal_token)
+    profile = decode_token(casportal_token, db)
 
     return profile
 
@@ -70,7 +73,7 @@ def create_token(claims: dict):
     target = claims.copy()
 
     target.update({
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=30),
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=300),
         'iss': 'casportal',
         'aud': 'casportal'
     })
@@ -92,22 +95,36 @@ async def register(login: RegisterIn, db: Session = Depends(Database)):
 
 
 # Login sets a cookie but also returns the token object
-@router.post('/login', response_model=Token)
-async def login(login: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(Database)):
-    basic: BasicLogin = crud.read_basic_login_by_email(db, login.username)
+@router.post('/login')
+async def login(response: Response, login: schemas.BasicLoginSignIn, db: Session = Depends(Database)):
+    basic: BasicLogin = crud.read_basic_login_by_email(db, login.email)
 
     if basic is None:
         raise CREDENTIALS_EXCEPTION()
 
-    if password_context.verify(login.password, basic.password):        
+    if password_context.verify(login.password, basic.password):
+        token = create_token({
+            'sub': basic.email
+        })
+
+        # response = JSONResponse(content = {
+        #     'access_token': token,
+        #     'token_type': 'bearer'
+        # }) 
+        response.set_cookie(key='casportal_token', value=token, path='/', httponly=True)
+
         return {
-            'access_token': create_token({
-                'sub': basic.email
-            }),
+            'access_token': token,
             'token_type': 'bearer'
         }
     else:
         raise CREDENTIALS_EXCEPTION()
+
+@router.post('logout')
+async def logout(response: Response):
+    response.delete_cookie('casportal_token', path='/')
+
+    return response
 
 
 #
