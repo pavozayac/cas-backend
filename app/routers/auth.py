@@ -35,9 +35,10 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl='login')
 def decode_token(token: str, db: Session):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'], issuer='casportal', audience='casportal')
-        email: str = payload.get('sub')
+        sub: str = payload.get('sub')
+        foreign: bool = payload.get('foreign')
 
-        if email is None:
+        if sub is None:
             raise CREDENTIALS_EXCEPTION('Sub not found in payload')
     except ExpiredSignatureError:
         raise CREDENTIALS_EXCEPTION('Token expired')
@@ -46,7 +47,10 @@ def decode_token(token: str, db: Session):
     except:
         raise CREDENTIALS_EXCEPTION('Invalid JWT')
     
-    profile = crud.read_profile_by_email(db, email)
+    if foreign:
+        profile = crud.read_profile_by_foreign_id(db, sub)
+    else:
+        profile = crud.read_profile_by_email(db, sub)
     
     return profile
 
@@ -112,7 +116,7 @@ async def login(response: Response, login: schemas.BasicLoginSignIn, db: Session
         #     'token_type': 'bearer'
         # }) 
         response.set_cookie(key='casportal_token', value=token, path='/', httponly=True)
-
+    
         return {
             'access_token': token,
             'token_type': 'bearer'
@@ -138,7 +142,7 @@ from jose import utils as jose_utils
 import hmac
 
 @router.post('/auth/google', response_model=Token)
-async def auth_with_google(request: Request, db: Session = Depends(Database)):
+async def auth_with_google(response: Response, request: Request, db: Session = Depends(Database)):
     json = await request.json()
     token = json['credential']
     
@@ -157,10 +161,15 @@ async def auth_with_google(request: Request, db: Session = Depends(Database)):
         profile = crud.create_profile(db, profile_in)
         crud.create_foreign_login(db, email=data['email'], profile_id=profile.id, foreign_id=data['sub'], provider='google')
 
+    access_token = create_token({
+        'sub': data['sub'],
+        'foreign': True
+    })
+
+    response.set_cookie(key='casportal_token', value=access_token, path='/', httponly=True)
+
     return {
-        'access_token': create_token({
-            'sub': data['sub']
-        }),
+        'access_token': access_token,
         'token_type': 'bearer'
     }
 
@@ -171,8 +180,8 @@ async def auth_with_google(request: Request, db: Session = Depends(Database)):
     #    crud.create_foreign_login(db, user.email)
 
 
-@router.post('/auth/facebook', response_model=Token)
-async def auth_with_facebook(request: Request, db: Session = Depends(Database)):
+@router.post('/auth/facebook')
+async def auth_with_facebook(response: Response, request: Request, db: Session = Depends(Database)):
     json = await request.json()
     print(json) 
 
@@ -195,10 +204,15 @@ async def auth_with_facebook(request: Request, db: Session = Depends(Database)):
 
         profile = crud.create_profile(db, profile_in)
         crud.create_foreign_login(db, email=json['email'], profile_id=profile.id, foreign_id=json['id'], provider='facebook')
+    
+    access_token = create_token({
+        'sub': json['id'],
+        'foreign': True
+    })
+
+    response.set_cookie(key='casportal_token', value=access_token, path='/', httponly=True)
 
     return {
-        'access_token': create_token({
-            'sub': json['id']
-        }),
+        'access_token': access_token,
         'token_type': 'bearer'
     }

@@ -44,6 +44,13 @@ def read_profile_by_email(db: Session, email: str):
 
     return login.profile
 
+def read_profile_by_foreign_id(db: Session, id: int):
+    login = db.query(models.ForeignLogin).filter(models.ForeignLogin.foreign_id == id).first()
+
+    if login is None:
+        raise HTTPException(HTTP_404_NOT_FOUND, 'Profile not found')
+        
+    return db.query(models.Profile).filter(models.Profile.id == login.profile_id).one()
 
 def read_profile_by_foreign_email(db: Session, email: str):
     login = db.query(models.ForeignLogin).filter(models.ForeignLogin.email == email).first()
