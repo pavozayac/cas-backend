@@ -67,7 +67,6 @@ def filter_profiles(db: Session, filters: schemas.ProfileFilters, sorts: schemas
     search = sort_from_schema(search, models.Profile, sorts)
 
     return search.all()
-
     
 
 def update_profile(db: Session, instance: models.Profile, schema: schemas.ProfileIn):
