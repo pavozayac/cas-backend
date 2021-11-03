@@ -363,8 +363,8 @@ def read_profile_avatar(db: Session, id: str):
 async def update_profile_avatar(db: Session, avatar: schemas.AvatarIn, profile: models.Profile, file: UploadFile):
     generated_path, id = await save_generic_attachment(file)
 
-    if not os.path.exists(profile.avatar.saved_path):
-        raise HTTPException(status.HTTP_409_CONFLICT, 'The attachment is not available.')
+    if profile.avatar and os.path.exists(profile.avatar.saved_path):
+        db.delete(profile.avatar)
 
     avatar_obj = models.ProfileAvatar(
         id=str(id),
@@ -373,7 +373,6 @@ async def update_profile_avatar(db: Session, avatar: schemas.AvatarIn, profile: 
         date_added = date.today()
     )
 
-    db.delete(profile.avatar)
     profile.avatar = avatar_obj
     db.commit()
     db.refresh(avatar_obj)
