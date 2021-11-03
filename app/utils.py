@@ -36,7 +36,9 @@ def check_access_from_visibility(reflection: models.Reflection, profile: models.
             raise CREDENTIALS_EXCEPTION('Unauthorized access')
 
     elif reflection.author.post_visibility == 1:
-        if profile.id != reflection.profile_id and not profile.is_admin and not profile.is_moderator and profile != reflection.author.group.coordinator and profile.group.id != reflection.author.group_id:
+        if profile.id != reflection.profile_id \
+            and not profile.is_admin and not profile.is_moderator and profile != reflection.author.group.coordinator \
+            and profile.group.id != reflection.author.group_id:
             raise CREDENTIALS_EXCEPTION('Unauthorized access')
 
 def filter_from_schema(query: Query, schema: BaseModel):

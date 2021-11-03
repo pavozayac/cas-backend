@@ -73,7 +73,7 @@ def create_token(claims: dict):
     target = claims.copy()
 
     target.update({
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=300),
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=60),
         'iss': 'casportal',
         'aud': 'casportal'
     })
@@ -82,7 +82,7 @@ def create_token(claims: dict):
 
     return token
 
-# Takes 
+# Takes
 @router.post('/register', response_model=schemas.Profile)
 async def register(login: RegisterIn, db: Session = Depends(Database)):
     profile_in = schemas.ProfileIn(first_name = login.first_name, last_name = login.last_name, post_visibility = login.post_visibility)
@@ -138,7 +138,7 @@ from jose import utils as jose_utils
 import hmac
 
 @router.post('/auth/google', response_model=Token)
-async def auth_with_google(request: Request, db: Session = Depends(Database)):
+async def auth_with_google(response: Response, request: Request, db: Session = Depends(Database)):
     json = await request.json()
     token = json['credential']
     
@@ -157,22 +157,20 @@ async def auth_with_google(request: Request, db: Session = Depends(Database)):
         profile = crud.create_profile(db, profile_in)
         crud.create_foreign_login(db, email=data['email'], profile_id=profile.id, foreign_id=data['sub'], provider='google')
 
+    jwt = create_token({
+        'sub': data['sub']
+    })
+
+    response.set_cookie(key='casportal_token', value=jwt, path='/', httponly=True)
+
     return {
-        'access_token': create_token({
-            'sub': data['sub']
-        }),
+        'access_token': jwt,
         'token_type': 'bearer'
     }
 
-    
-    #try:
-    #    profile = crud.read_profile_by_foreign_email(db, user.email)
-    #except HTTPException:
-    #    crud.create_foreign_login(db, user.email)
-
 
 @router.post('/auth/facebook', response_model=Token)
-async def auth_with_facebook(request: Request, db: Session = Depends(Database)):
+async def auth_with_facebook(response: Response, request: Request, db: Session = Depends(Database)):
     json = await request.json()
     print(json) 
 
@@ -195,10 +193,14 @@ async def auth_with_facebook(request: Request, db: Session = Depends(Database)):
 
         profile = crud.create_profile(db, profile_in)
         crud.create_foreign_login(db, email=json['email'], profile_id=profile.id, foreign_id=json['id'], provider='facebook')
+    
+    jwt = create_token({
+        'sub': json['id']
+    })
+
+    response.set_cookie(key='casportal_token', value=jwt, path='/', httponly=True)
 
     return {
-        'access_token': create_token({
-            'sub': json['id']
-        }),
+        'access_token': jwt,
         'token_type': 'bearer'
     }
