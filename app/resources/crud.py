@@ -44,6 +44,13 @@ def read_profile_by_email(db: Session, email: str):
 
     return login.profile
 
+def read_profile_by_foreign_id(db: Session, id: int):
+    login = db.query(models.ForeignLogin).filter(models.ForeignLogin.foreign_id == id).first()
+
+    if login is None:
+        raise HTTPException(HTTP_404_NOT_FOUND, 'Profile not found')
+        
+    return db.query(models.Profile).filter(models.Profile.id == login.profile_id).one()
 
 def read_profile_by_foreign_email(db: Session, email: str):
     login = db.query(models.ForeignLogin).filter(models.ForeignLogin.email == email).first()
@@ -60,7 +67,6 @@ def filter_profiles(db: Session, filters: schemas.ProfileFilters, sorts: schemas
     search = sort_from_schema(search, models.Profile, sorts)
 
     return search.all()
-
     
 
 def update_profile(db: Session, instance: models.Profile, schema: schemas.ProfileIn):
@@ -360,7 +366,6 @@ async def update_profile_avatar(db: Session, avatar: schemas.AvatarIn, profile: 
     if profile.avatar and os.path.exists(profile.avatar.saved_path):
         db.delete(profile.avatar)
 
-
     avatar_obj = models.ProfileAvatar(
         id=str(id),
         filename = avatar.filename,
@@ -410,11 +415,13 @@ def create_reflection(db: Session, profile_id: int, reflection: schemas.Reflecti
         tags = tags_list
     )
 
-    
+    profile = read_profile_by_id(db, profile_id)
 
     db.add(reflection_obj)
     db.commit()
     db.refresh(reflection_obj)
+
+    reflection_obj.is_favourite = True if profile in reflection_obj.favouritees else False
 
     return reflection_obj
 
@@ -429,12 +436,28 @@ def read_reflection_by_id(db: Session, id: int, profile: models.Profile):
 
     return reflection
 
-def filter_reflections(db: Session, filters: schemas.ReflectionFilters, sorts: schemas.ReflectionSorts):
+def filter_reflections(db: Session, filters: schemas.ReflectionFilters, sorts: schemas.ReflectionSorts, profile: models.Profile):
     query = db.query(models.Reflection)
     query = filter_from_schema(query, filters)
     query = sort_from_schema(query, sorts)
+    reflections = query.all()
 
-    return query.all()
+    for ref in reflections:
+        ref.is_favourite = True if profile in ref.favouritees else False
+    return reflections
+
+def filter_favourite_reflections(db: Session, filters: schemas.ReflectionFilters, sorts: schemas.ReflectionSorts, profile: models.Profile):
+    query = db.query(models.Reflection)
+    query = filter_from_schema(query, filters)
+    query = sort_from_schema(query, sorts)
+    reflections = query.all()
+
+    favouriteReflections = []
+    for ref in reflections:
+        ref.is_favourite = True if profile in ref.favouritees else False
+        if ref.is_favourite == True:
+            favouriteReflections.append(ref)
+    return favouriteReflections
     
 
 def update_reflection(db: Session, instance: models.Reflection, reflection: schemas.ReflectionIn):
@@ -468,12 +491,14 @@ def delete_reflection(db: Session, instance: models.Reflection):
 #
 
 async def create_reflection_attachment(db: Session, attachment: schemas.AttachmentIn, file: UploadFile):
-    generated_path, id = await save_generic_attachment(file)
+    generated_path, gen_id = await save_generic_attachment(file)
 
     attachment_obj = models.Attachment(
-        id=str(id)
-        **attachment.dict(),
-        saved_path=generated_path
+        id = str(gen_id),
+        filename=attachment.filename,
+        saved_path=str(generated_path),
+        reflection_id=int(attachment.reflection_id),
+        date_added=datetime.now()
     )
 
     db.add(attachment_obj)
@@ -482,7 +507,7 @@ async def create_reflection_attachment(db: Session, attachment: schemas.Attachme
     return attachment_obj
 
 def read_reflection_attachment(db: Session, id: str):
-    attachment = db.query(models.Attachment).filter(id==id).one()
+    attachment = db.query(models.Attachment).filter(models.Attachment.id == id).one()
 
     if attachment is None:
         raise HTTPException(HTTP_404_NOT_FOUND, 'Attachment not found')
@@ -533,7 +558,7 @@ def read_tags(db: Session):
     return db.query(models.Tag).all()
 
 def read_tag_by_name(db: Session, name: str):
-    retrieved = db.query(models.Tag).filter(models.Tag.name == name).one()
+    retrieved = db.query(models.Tag).filter(models.Tag.name == name).one_or_none()
 
     return retrieved
 

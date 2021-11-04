@@ -21,7 +21,7 @@ router = APIRouter()
 
 @router.post('/query', response_model=List[schemas.Reflection])
 async def filter_reflections(filters: schemas.ReflectionFilters, sorts: schemas.ReflectionSorts, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
-    reflections = crud.filter_reflections(db, filters, sorts)
+    reflections = crud.filter_reflections(db, filters, sorts, profile)
     for reflection in reflections:
         try:
             check_access_from_visibility(reflection, profile)
@@ -30,7 +30,18 @@ async def filter_reflections(filters: schemas.ReflectionFilters, sorts: schemas.
 
     return reflections
 
-#
+@router.post('/favourites', response_model=List[schemas.Reflection])
+async def favourite_reflections(filters: schemas.ReflectionFilters, sorts: schemas.ReflectionSorts, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+    reflections = crud.filter_favourite_reflections(db, filters, sorts, profile)
+
+    for reflection in reflections:
+        try:
+            check_access_from_visibility(reflection, profile)
+        except HTTPException:
+            reflections.remove(reflection)
+
+    return reflections
+#   
 #   CRUD actions for reflections
 #
 
@@ -51,7 +62,7 @@ async def get_reflection_by_id(id: int, db: Session = Depends(Database), profile
 async def update_reflection(id: int, data: schemas.ReflectionIn, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     reflection = crud.read_reflection_by_id(db, id, profile)
 
-    check_object_ownership(reflection, 'profile_id', profile)
+    check_object_ownership(reflection, profile, 'profile_id')
 
     return crud.update_reflection(db, reflection, data)
 
@@ -59,7 +70,7 @@ async def update_reflection(id: int, data: schemas.ReflectionIn, db: Session = D
 async def delete_reflection(id: int, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     reflection = crud.read_reflection_by_id(db, id, profile)
 
-    check_object_ownership(reflection, 'profile_id', profile)
+    check_object_ownership(reflection, profile, 'profile_id')
 
     crud.delete_reflection(db, reflection)
 
@@ -117,7 +128,7 @@ async def delete_comment(comment_id: int, db: Session = Depends(Database), profi
 #   Favourites actions
 #
 
-@router.post('/{reflecion_id}/favourite')
+@router.post('/{reflection_id}/favourite')
 async def favourite_reflection(reflection_id: int, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     reflection = crud.read_reflection_by_id(db, reflection_id, profile)
 
@@ -167,7 +178,7 @@ async def add_attachment(id: int, file: UploadFile = File(...), db: Session = De
         filename=file.filename
     )
 
-    attachment = crud.create_reflection_attachment(db, attachment_in, file)
+    attachment = await crud.create_reflection_attachment(db, attachment_in, file)
 
     return attachment
 

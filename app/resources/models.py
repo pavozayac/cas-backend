@@ -2,6 +2,8 @@ from datetime import datetime
 from sqlalchemy import Column, ForeignKey, String, Boolean, Date, Integer, Enum, DateTime, Table, Text, Unicode, event, JSON
 from sqlalchemy.orm import relationship, backref
 from os import remove as remove_file
+
+from sqlalchemy.sql.functions import func
 from ..database import Base
 
 
@@ -151,14 +153,14 @@ tags_reflections = Table('tags_reflections', Base.metadata,
 class Attachment(Base):
     __tablename__ = 'attachments'
 
-    id = Column(String, primary_key=True)
+    id = Column(String , primary_key=True)
 
     reflection_id = Column(Integer, ForeignKey('reflections.id'))
     reflection = relationship('Reflection', back_populates='attachments')
 
-    saved_path = Column(String)
-    filename = Column(String)
-    date_added = Column(Date)
+    saved_path = Column(String(200))
+    filename = Column(String(200))
+    date_added = Column(DateTime, server_default=func.now())
 
 
 class Reflection(Base):

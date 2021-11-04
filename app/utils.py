@@ -32,7 +32,7 @@ def check_object_ownership(object, profile: models.Profile, field: str = 'profil
 def check_access_from_visibility(reflection: models.Reflection, profile: models.Profile):
     if reflection.author.post_visibility == 0:
         print(1)
-        if profile.id != reflection.profile_id and not profile.is_admin and not profile.is_moderator and profile != reflection.author.group.coordinator:
+        if profile.id != reflection.profile_id and not profile.is_admin and not profile.is_moderator and (reflection.author.group and profile != reflection.author.group.coordinator):
             raise CREDENTIALS_EXCEPTION('Unauthorized access')
 
     elif reflection.author.post_visibility == 1:

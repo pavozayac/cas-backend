@@ -17,6 +17,7 @@ class AttachmentIn(AttachmentBase):
     pass
 
 class Attachment(AttachmentBase):
+    id: str 
     saved_path: str
     date_added: date
 
@@ -258,6 +259,7 @@ class ReflectionIn(ReflectionBase):
     tags: List[TagIn]
 
 class Reflection(ReflectionBase):
+    id: int
     profile_id: int
     slug: str
     date_added: date
