@@ -100,7 +100,6 @@ class ProfileSorts(BaseModel):
 
 class BasicLoginBase(BaseModel):
     email: EmailStr
-   
 
 class BasicLoginIn(BasicLoginBase):
     password: str

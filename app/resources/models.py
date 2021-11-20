@@ -76,6 +76,13 @@ class ForeignLogin(Base):
     # Provider = through Google or Facebook
     provider = Column(String)
 
+class ConfirmationCode(Base):
+    __tablename__ = 'confirmation_codes'
+
+    code = Column(String, primary_key=True)
+
+    profile_id = Column(Integer, ForeignKey(Profile.id), unique=True)
+    profile = relationship('Profile', backref='confirmation_code')
 
 class Group(Base):
     __tablename__ = 'groups'

@@ -1,7 +1,7 @@
 from .utils import CREDENTIALS_EXCEPTION
 from sqlalchemy.orm.session import Session
 from fastapi import FastAPI, Depends, HTTPException, status
-from .resources.schemas import ProfileIn
+from .resources.schemas import Message, ProfileIn
 from .database import engine, Base, Database
 from .routers.auth import LoginAuth
 from typing import List
@@ -75,8 +75,9 @@ api.include_router(
     tags=['messages']
 )
 
-@api.get('/bruh', response_model=schemas.Profile)
-async def root(profile: models.Profile = Depends(LoginAuth)):
-    if profile is None:
-        raise CREDENTIALS_EXCEPTION('Error in main')
-    return profile
+
+# @api.get('/bruh', response_model=schemas.Profile)
+# async def root(profile: models.Profile = Depends(LoginAuth)):
+#     if profile is None:
+#         raise CREDENTIALS_EXCEPTION('Error in main')
+#     return profile

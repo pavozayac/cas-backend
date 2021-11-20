@@ -14,13 +14,14 @@ from ..database import Database
 from sqlalchemy.orm.session import Session
 from passlib.context import CryptContext
 from jose import jwt
-from ..utils import CREDENTIALS_EXCEPTION
+from ..utils import CREDENTIALS_EXCEPTION, generate_random_code
 from ..settings import SECRET_KEY
 from ..resources import schemas
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import JWTError
 from starlette.config import Config
 from typing import Optional
+from ..mailing import send_confirmation_mail, send_recovery_mail
 
 password_context = CryptContext(schemes=['bcrypt'])
 
@@ -95,8 +96,31 @@ async def register(login: RegisterIn, db: Session = Depends(Database)):
     basic_in = BasicLoginIn(email=login.email, password=login.password)
     created_login = crud.create_basic_login(db, created_profile.id, basic_in)
 
+    random_code = generate_random_code()
+
+    crud.create_confirmation_code(db, random_code, created_profile.id)
+
+    await send_confirmation_mail(created_login.email, random_code)
+
+    created_login.verification_sent = True
+
+    db.commit()
+
     return created_profile
 
+@router.post('/confirm-email/{code}')
+async def confirm_email(code: str, db: Session = Depends(Database)):
+    confirmation_code = crud.read_confirmation_code(db, code)
+
+    basic_login = crud.read_basic_login_by_profile(db, confirmation_code.profile_id)
+
+    basic_login.verified = True
+
+    db.commit()
+
+    return {
+        'detail': 'Successfully confirmed email address'
+    }
 
 # Login sets a cookie but also returns the token object
 @router.post('/login')
