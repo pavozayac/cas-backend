@@ -124,6 +124,13 @@ class RegisterIn(ProfileIn,  BasicLoginIn):
     pass
 
 #
+#   Sending recovery mail schema
+#
+
+class SendRecoveryMailSchema(BaseModel):
+    email: str
+
+#
 #   ForeignLogin schemas
 #
 

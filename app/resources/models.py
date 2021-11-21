@@ -84,6 +84,8 @@ class ConfirmationCode(Base):
     profile_id = Column(Integer, ForeignKey(Profile.id), unique=True)
     profile = relationship('Profile', backref='confirmation_code')
 
+    date_created = Column(DateTime)
+
 class Group(Base):
     __tablename__ = 'groups'
 

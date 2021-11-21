@@ -1,20 +1,21 @@
+import time
 import sqlalchemy
 from sqlalchemy.orm import Session, query
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.relationships import foreign
-from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 from . import schemas, models
 from .. import settings
 from ..utils import filter_from_schema, sort_from_schema, save_generic_attachment, delete_generic_attachment
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from passlib.context import CryptContext
 from fastapi import status, HTTPException, UploadFile
 import aiofiles
 import os
+
 #
 #   Profile CRUD
 #
-
 
 def create_profile(db: Session, profile: schemas.ProfileIn):
     profile_obj = models.Profile(
@@ -173,22 +174,37 @@ def read_foreign_login(db: Session, foreign_id: str):
 #   Confirmation/recovery hybrid code CRUD
 #
 
+from sqlalchemy.exc import IntegrityError
+
 def create_confirmation_code(db: Session, code: str, profile_id: int):
     confirmation_code = models.ConfirmationCode(
         profile_id=profile_id,
-        code=code
+        code=code,
+        date_created=datetime.now()
     )
+    try:
+        check_code = db.query(models.ConfirmationCode).filter(models.ConfirmationCode.profile_id == profile_id).one()
+        if check_code.date_created < datetime.now()-timedelta(minutes=15):
+            db.delete(check_code)
+            db.commit()
+        else:
+            raise HTTPException(HTTP_409_CONFLICT, 'Recovery email has already been sent, try again in 15 minutes')
+    except NoResultFound:
+        pass
 
-    db.add(confirmation_code)
-    db.commit()
-    db.refresh(confirmation_code)
+    try:
+        db.add(confirmation_code)
+        db.commit()
+        db.refresh(confirmation_code)
+    except IntegrityError:
+        raise HTTPException(HTTP_409_CONFLICT, 'Recovery email has already been sent.')
     return confirmation_code
 
 
 def read_confirmation_code(db: Session, code: str) -> models.ConfirmationCode:
     try:
         confirmation_code = db.query(models.ConfirmationCode).filter(
-            models.ConfirmationCode.code == code).one()
+            models.ConfirmationCode.code.like(code)).one()
     except NoResultFound:
         raise HTTPException(HTTP_404_NOT_FOUND, 'Confirmation code is invalid')
 

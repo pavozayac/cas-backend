@@ -1,3 +1,8 @@
+import hmac
+from jose import utils as jose_utils
+from os import getenv
+from google.auth.transport import requests
+from google.oauth2 import id_token
 from codecs import decode
 import hashlib
 from fastapi.exceptions import HTTPException
@@ -22,6 +27,7 @@ from jose import JWTError
 from starlette.config import Config
 from typing import Optional
 from ..mailing import send_confirmation_mail, send_recovery_mail
+from app.resources import models
 
 password_context = CryptContext(schemes=['bcrypt'])
 
@@ -33,9 +39,11 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl='login')
 #   Dependencies, to be injected in specific protected routes
 #
 
+
 def decode_token(token: str, db: Session):
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'], issuer='casportal', audience='casportal')
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[
+                             'HS256'], issuer='casportal', audience='casportal')
         sub: str = payload.get('sub')
         foreign: bool = payload.get('foreign')
 
@@ -47,13 +55,14 @@ def decode_token(token: str, db: Session):
         raise CREDENTIALS_EXCEPTION(error)
     except:
         raise CREDENTIALS_EXCEPTION('Invalid JWT')
-    
+
     if foreign:
         profile = crud.read_profile_by_foreign_id(db, sub)
     else:
         profile = crud.read_profile_by_email(db, sub)
-    
+
     return profile
+
 
 def LoginAuth(casportal_token: str = Cookie(None), db: Session = Depends(Database)):
     print(casportal_token)
@@ -61,9 +70,11 @@ def LoginAuth(casportal_token: str = Cookie(None), db: Session = Depends(Databas
 
     return profile
 
+
 def ModeratorAuth(profile: Profile = Depends(LoginAuth)):
     if not profile.is_moderator and not profile.is_admin:
         raise CREDENTIALS_EXCEPTION('Insufficient permissions')
+
 
 def AdminAuth(profile: Profile = Depends(LoginAuth)):
     if not profile.is_admin:
@@ -88,9 +99,12 @@ def create_token(claims: dict):
     return token
 
 # Takes
+
+
 @router.post('/register', response_model=schemas.Profile)
 async def register(login: RegisterIn, db: Session = Depends(Database)):
-    profile_in = schemas.ProfileIn(first_name = login.first_name, last_name = login.last_name, post_visibility = login.post_visibility)
+    profile_in = schemas.ProfileIn(
+        first_name=login.first_name, last_name=login.last_name, post_visibility=login.post_visibility)
     created_profile = crud.create_profile(db, profile_in)
 
     basic_in = BasicLoginIn(email=login.email, password=login.password)
@@ -108,19 +122,65 @@ async def register(login: RegisterIn, db: Session = Depends(Database)):
 
     return created_profile
 
+
 @router.post('/confirm-email/{code}')
-async def confirm_email(code: str, db: Session = Depends(Database)):
+async def confirm_email_route(code: str, db: Session = Depends(Database)):
     confirmation_code = crud.read_confirmation_code(db, code)
 
-    basic_login = crud.read_basic_login_by_profile(db, confirmation_code.profile_id)
+    basic_login = crud.read_basic_login_by_profile(
+        db, confirmation_code.profile_id)
 
     basic_login.verified = True
+
+    crud.delete_confirmation_code(db, confirmation_code)
 
     db.commit()
 
     return {
         'detail': 'Successfully confirmed email address'
     }
+
+
+@router.post('/send-recovery-mail')
+async def send_recovery_mail_route(recovery_mail_schema: schemas.SendRecoveryMailSchema, db: Session = Depends(Database)):
+    profile = crud.read_profile_by_email(db, recovery_mail_schema.email)
+
+    random_code = generate_random_code()
+    crud.create_confirmation_code(db, random_code, profile.id)
+
+    await send_recovery_mail(recovery_mail_schema.email, random_code)
+
+    return {
+        'detail': 'Recovery mail has been sent'
+    }
+
+
+@router.post('/recover-password/{code}')
+async def recover_password(code: str, basic_login_in: schemas.BasicLoginIn, db: Session = Depends(Database)):
+    confirmation_code = crud.read_confirmation_code(db, code)
+
+    basic_login = crud.read_basic_login_by_profile(
+        db, confirmation_code.profile_id)
+
+    crud.update_basic_login(db, basic_login, basic_login_in)
+
+    crud.delete_confirmation_code(db, confirmation_code)
+
+    return {
+        'detail': 'Password reset successfully'
+    }
+
+
+@router.post('/change-password')
+async def change_password(basic_login_in: schemas.BasicLoginIn, profile: models.Profile = Depends(LoginAuth), db: Session = Depends(Database)):
+    basic_login = profile.basic_login
+
+    crud.update_basic_login(db, basic_login, basic_login_in)
+
+    return {
+        'detail': 'Password change successfully'
+    }
+
 
 # Login sets a cookie but also returns the token object
 @router.post('/login')
@@ -138,15 +198,17 @@ async def login(response: Response, login: schemas.BasicLoginSignIn, db: Session
         # response = JSONResponse(content = {
         #     'access_token': token,
         #     'token_type': 'bearer'
-        # }) 
-        response.set_cookie(key='casportal_token', value=token, path='/', httponly=True)
-    
+        # })
+        response.set_cookie(key='casportal_token',
+                            value=token, path='/', httponly=True)
+
         return {
             'access_token': token,
             'token_type': 'bearer'
         }
     else:
         raise CREDENTIALS_EXCEPTION()
+
 
 @router.post('/logout')
 async def logout(response: Response):
@@ -158,41 +220,38 @@ async def logout(response: Response):
 
 
 #
-#   Google authorization 
+#   Google authorization
 #
 
-from google.oauth2 import id_token
-from google.auth.transport import requests
-from os import getenv
-from jose import utils as jose_utils
-import hmac
 
 @router.post('/auth/google', response_model=Token)
 async def auth_with_google(response: Response, request: Request, db: Session = Depends(Database)):
     json = await request.json()
     token = json['credential']
-    
 
-    
     try:
-        data: dict = id_token.verify_oauth2_token(token, requests.Request(), getenv('GOOGLE_CLIENT_ID'))
+        data: dict = id_token.verify_oauth2_token(
+            token, requests.Request(), getenv('GOOGLE_CLIENT_ID'))
     except ValueError:
         raise HTTPException(401, 'Invalid token')
 
     try:
         crud.read_foreign_login(db, data['sub'])
     except HTTPException:
-        profile_in = schemas.ProfileIn(first_name=data['given_name'], last_name=data.get('last_name', ''), post_visibility=0)
+        profile_in = schemas.ProfileIn(first_name=data['given_name'], last_name=data.get(
+            'last_name', ''), post_visibility=0)
 
         profile = crud.create_profile(db, profile_in)
-        crud.create_foreign_login(db, email=data['email'], profile_id=profile.id, foreign_id=data['sub'], provider='google')
+        crud.create_foreign_login(
+            db, email=data['email'], profile_id=profile.id, foreign_id=data['sub'], provider='google')
 
     access_token = create_token({
         'sub': data['sub'],
         'foreign': True
     })
 
-    response.set_cookie(key='casportal_token', value=access_token, path='/', httponly=True)
+    response.set_cookie(key='casportal_token',
+                        value=access_token, path='/', httponly=True)
 
     return {
         'access_token': access_token,
@@ -203,15 +262,17 @@ async def auth_with_google(response: Response, request: Request, db: Session = D
 @router.post('/auth/facebook')
 async def auth_with_facebook(response: Response, request: Request, db: Session = Depends(Database)):
     json = await request.json()
-    print(json) 
+    print(json)
 
     token: str = json['signed_request']
 
     signature, payload = token.split('.')
-    
-    decoded_signature = jose_utils.base64url_decode(signature + '=' * (4 - len(signature) % 4))
-    calculated_signature = hmac.HMAC(bytes(getenv('FACEBOOK_CLIENT_SECRET'), 'utf-8'), bytes(payload, 'utf-8'), hashlib.sha256).digest()
-  
+
+    decoded_signature = jose_utils.base64url_decode(
+        signature + '=' * (4 - len(signature) % 4))
+    calculated_signature = hmac.HMAC(bytes(getenv(
+        'FACEBOOK_CLIENT_SECRET'), 'utf-8'), bytes(payload, 'utf-8'), hashlib.sha256).digest()
+
     verified = calculated_signature == decoded_signature
 
     if not verified:
@@ -220,17 +281,20 @@ async def auth_with_facebook(response: Response, request: Request, db: Session =
     try:
         crud.read_foreign_login(db, json['id'])
     except HTTPException:
-        profile_in = schemas.ProfileIn(first_name=json['first_name'], last_name=json.get('last_name', ''), post_visibility=0)
+        profile_in = schemas.ProfileIn(first_name=json['first_name'], last_name=json.get(
+            'last_name', ''), post_visibility=0)
 
         profile = crud.create_profile(db, profile_in)
-        crud.create_foreign_login(db, email=json['email'], profile_id=profile.id, foreign_id=json['id'], provider='facebook')
-    
+        crud.create_foreign_login(
+            db, email=json['email'], profile_id=profile.id, foreign_id=json['id'], provider='facebook')
+
     access_token = create_token({
         'sub': json['id'],
         'foreign': True
     })
 
-    response.set_cookie(key='casportal_token', value=access_token, path='/', httponly=True)
+    response.set_cookie(key='casportal_token',
+                        value=access_token, path='/', httponly=True)
 
     return {
         'access_token': access_token,
