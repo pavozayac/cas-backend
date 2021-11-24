@@ -133,7 +133,7 @@ def read_basic_login_by_profile(db: Session, profile_id: int):
     return db.query(models.BasicLogin).filter(models.BasicLogin.profile_id == profile_id).one()
 
 def update_basic_login(db: Session, basic_login: models.BasicLogin, basic_login_in: schemas.BasicLoginIn):
-    basic_login.password = basic_login_in.password
+    basic_login.password = password_context.hash(basic_login_in.password)
     
     db.commit()
     db.refresh(basic_login)

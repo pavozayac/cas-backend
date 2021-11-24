@@ -4,7 +4,7 @@ from os import getenv
 
 load_dotenv()
 
-frontend_url = getenv('FRONTEND_CONFIRM_URL')
+frontend_url = getenv('FRONTEND_URL')
 
 conf = ConnectionConfig(
     MAIL_USERNAME="casportal.testmail",
@@ -28,7 +28,7 @@ async def send_confirmation_mail(email: str, code: str):
     message = MessageSchema(
         subject='CasPortal Email Confirmation',
         recipients=[email],
-        body=confirmation_html.format(f'{frontend_url+code}'),
+        body=confirmation_html.format(f'{frontend_url}/confirm-email/{code}'),
         subtype='html'
     )
 
@@ -45,7 +45,7 @@ async def send_recovery_mail(email: str, code: str):
     message = MessageSchema(
         subject='CasPortal Password Recovery',
         recipients=[email],
-        body=recovery_html.format(f'{frontend_url+code}'),
+        body=recovery_html.format(f'{frontend_url}/reset-password/{code}'),
         subtype='html'
     )
 
