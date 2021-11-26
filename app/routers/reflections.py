@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends
 from fastapi.datastructures import UploadFile
 from fastapi.exceptions import HTTPException
 from fastapi.param_functions import File
+from fastapi.routing import serialize_response
 from sqlalchemy.sql.schema import CheckConstraint
 from ..utils import check_object_ownership, filter_from_schema, sort_from_schema, check_access_from_visibility
 from ..resources import schemas, models, crud
@@ -10,6 +11,7 @@ from sqlalchemy.orm.session import Session
 from fastapi.responses import FileResponse
 from ..database import Database
 from .auth import LoginAuth
+from time import sleep
 
 from typing import List, Optional
 
@@ -19,7 +21,7 @@ router = APIRouter()
 #   Queries, that is advanced search and filtering, sorting
 #
 
-@router.post('/query', response_model=List[schemas.Reflection])
+@router.post('/query', response_model=List[schemas.BulkReflection])
 async def filter_reflections(filters: schemas.ReflectionFilters, sorts: schemas.ReflectionSorts, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     reflections = crud.filter_reflections(db, filters, sorts, profile)
     for reflection in reflections:
@@ -55,6 +57,8 @@ async def get_reflection_by_id(id: int, db: Session = Depends(Database), profile
     print(reflection.tags)
 
     check_access_from_visibility(reflection, profile)
+
+    sleep(1)
 
     return reflection
 

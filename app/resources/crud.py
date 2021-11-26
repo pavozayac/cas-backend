@@ -626,17 +626,18 @@ async def create_reflection_attachment(db: Session, attachment: schemas.Attachme
 
 
 def read_reflection_attachment(db: Session, id: str):
-    attachment = db.query(models.Attachment).filter(
-        models.Attachment.id == id).one()
-
-    if attachment is None:
+    try:
+        attachment = db.query(models.Attachment).filter(
+            models.Attachment.id == id).one()
+    except NoResultFound:
         raise HTTPException(HTTP_404_NOT_FOUND, 'Attachment not found')
 
-    if not os.path.exists(attachment.saved_path):
-        raise HTTPException(status.HTTP_409_CONFLICT,
-                            'The attachment is not available.')
-
     return attachment
+
+    # if os.path.isfile(attachment.saved_path):
+    #     return attachment
+    # else:
+    #     raise HTTPException(status.HTTP_410_GONE, 'The attachment is not available')
 
 
 def delete_reflection_attachment(db: Session, attachment: models.Attachment):

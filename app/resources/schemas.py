@@ -277,6 +277,12 @@ class Reflection(ReflectionBase):
     class Config:
         orm_mode = True
 
+class BulkReflection(BaseModel):
+    id: int
+
+    class Config:
+        orm_mode = True
+
 class ReflectionFilters(BaseModel):
     title: Optional[str]
     creativity: Optional[bool]
