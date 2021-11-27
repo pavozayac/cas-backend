@@ -250,6 +250,35 @@ class TagSorts(BaseModel):
     date_added: Optional[str]
 
 #
+#   Comments
+#
+
+class CommentBase(BaseModel):
+    content: str
+
+class CommentIn(CommentBase):
+    pass
+
+class Comment(CommentBase):
+    comment_id: int
+    profile_id: int
+    reflection_id: int
+    date_added: date
+
+    class Config:
+        orm_mode = True
+
+class BulkComment(BaseModel):
+    comment_id: int
+
+    class Config:
+        orm_mode = True
+
+# Comments cannot be filtered, as basic filtering functionality is provided via the URL (retrieving comments from under a single reflection)
+class CommentSorts(BaseModel):
+    date_added: Optional[str]
+
+#
 #   Reflections
 #
 
@@ -270,6 +299,7 @@ class Reflection(ReflectionBase):
     slug: str
     date_added: date
     is_favourite: bool
+    comments: List[BulkComment]
     tags: List[Tag]
     attachments: List[Attachment]
     # Warning, this property needs to be set explicitly in the routes, as it requires info about the user
@@ -299,28 +329,6 @@ class ReflectionSorts(BaseModel):
 
     class Meta:
         source = models.Reflection
-
-#
-#   Comments
-#
-
-class CommentBase(BaseModel):
-    content: int
-
-class CommentIn(CommentBase):
-    pass
-
-class Comment(CommentBase):
-    profile_id: int
-    reflection_id: int
-    date_added: date
-
-    class Config:
-        orm_mode = True
-
-# Comments cannot be filtered, as basic filtering functionality is provided via the URL (retrieving comments from under a single reflection)
-class CommentSorts(BaseModel):
-    date_added: Optional[str]
 
 #
 #   Reflection reports

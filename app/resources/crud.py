@@ -652,6 +652,8 @@ def delete_reflection_attachment(db: Session, attachment: models.Attachment):
 def create_favourite(db: Session, reflection: models.Reflection, profile: models.Profile):
     if profile not in reflection.favouritees:
         reflection.favouritees.append(profile)
+    else:
+        raise HTTPException(HTTP_409_CONFLICT, 'Already favourited')
 
     db.commit()
 

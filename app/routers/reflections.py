@@ -58,7 +58,7 @@ async def get_reflection_by_id(id: int, db: Session = Depends(Database), profile
 
     check_access_from_visibility(reflection, profile)
 
-    sleep(1)
+    # sleep(.5)
 
     return reflection
 
