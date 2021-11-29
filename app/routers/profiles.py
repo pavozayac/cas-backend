@@ -71,8 +71,8 @@ async def delete_current_profile(profile: Profile = Depends(LoginAuth), db: Sess
 
 @router.get('/avatar/{id}')
 async def get_avatar_by_id(id: str, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+    print('bruh')
     avatar = crud.read_profile_avatar(db, id)
-    print(avatar.saved_path)
 
     return FileResponse(avatar.saved_path)
 

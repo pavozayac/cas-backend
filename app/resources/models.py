@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, ForeignKey, String, Boolean, Date, Integer, Enum, DateTime, Table, Text, Unicode, event, JSON
+from sqlalchemy import Column, ForeignKey, String, Boolean, Date, Integer, Enum, DateTime, Table, Text, Unicode, event, JSON, VARCHAR
 from sqlalchemy.orm import relationship, backref
 from os import remove as remove_file
 
@@ -46,7 +46,7 @@ class Profile(Base):
 class ProfileAvatar(Base):
     __tablename__ = 'profile_avatars'
 
-    id = Column(String, primary_key=True)
+    id = Column(VARCHAR(50), primary_key=True)
 
     saved_path = Column(String)
     filename = Column(String)

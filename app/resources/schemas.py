@@ -1,7 +1,7 @@
 from app.database import Base
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, EmailStr, validator, ValidationError
+from pydantic import BaseModel, Field, EmailStr, validator, ValidationError, root_validator
 from datetime import date, datetime
 from ..resources import models
  
@@ -162,7 +162,6 @@ class Token(BaseModel):
 #
 
 class GroupBase(BaseModel):
-    coordinator_id: int
     name: str
     graduation_year: int
 
@@ -170,6 +169,8 @@ class GroupIn(GroupBase):
     pass
 
 class Group(GroupBase):
+    id: str
+    coordinator_id: int
     date_created: date
     avatar: Optional[Avatar]
 
@@ -182,9 +183,15 @@ class GroupFilters(BaseModel):
     date_created_gte: Optional[date]
     date_created_lte: Optional[date]
 
+    class Meta:
+        source = models.Group
+
 class GroupSorts(BaseModel):
     date_created: Optional[str]
     name: Optional[str]
+
+    class Meta:
+        source = models.Group
 
 #
 #   GroupJoinRequests
@@ -246,7 +253,7 @@ class TagFilters(BaseModel):
         source = models.Tag
 
 class TagSorts(BaseModel):
-    name: Optional[str]
+    name: Optional[str] 
     date_added: Optional[str]
 
 #
@@ -260,7 +267,7 @@ class CommentIn(CommentBase):
     pass
 
 class Comment(CommentBase):
-    comment_id: int
+    id: int
     profile_id: int
     reflection_id: int
     date_added: date
@@ -269,7 +276,7 @@ class Comment(CommentBase):
         orm_mode = True
 
 class BulkComment(BaseModel):
-    comment_id: int
+    id: int
 
     class Config:
         orm_mode = True
@@ -277,6 +284,9 @@ class BulkComment(BaseModel):
 # Comments cannot be filtered, as basic filtering functionality is provided via the URL (retrieving comments from under a single reflection)
 class CommentSorts(BaseModel):
     date_added: Optional[str]
+
+    class Meta:
+        source = models.Comment
 
 #
 #   Reflections
@@ -288,6 +298,15 @@ class ReflectionBase(BaseModel):
     creativity: bool
     activity: bool
     service: bool
+
+    @root_validator
+    def validate_categories(cls, values):
+        cats = [values['creativity'], values['activity'], values['service']]
+        try:
+            assert any(cats)
+        except:
+            raise ValueError('At least one category must be true')
+        return values
     
 
 class ReflectionIn(ReflectionBase):

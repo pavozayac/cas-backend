@@ -219,9 +219,11 @@ def delete_confirmation_code(db: Session, confirmation_code: models.Confirmation
 #   Group CRUD
 #
 
+from secrets import token_urlsafe
 
 def create_group(db: Session, group: schemas.GroupIn, coordinator_id: int):
     new_group = models.Group(
+        id=token_urlsafe(8),
         coordinator_id=coordinator_id,
         name=group.name,
         graduation_year=group.graduation_year,
@@ -240,8 +242,8 @@ def read_group_by_id(db: Session, id: int):
 
 def filter_groups(db: Session, filters: schemas.GroupFilters, sorts: schemas.GroupSorts):
     groups = db.query(models.Group)
-    groups = filter_from_schema(groups, models.Group, filters)
-    groups = sort_from_schema(groups, models.Group, sorts)
+    groups = filter_from_schema(groups, filters)
+    groups = sort_from_schema(groups, sorts)
 
     return groups.all()
 
@@ -458,13 +460,14 @@ async def create_profile_avatar(db: Session, avatar: schemas.AvatarIn, profile: 
     return avatar_obj
 
 
-def read_profile_avatar(db: Session, id: str):
-    avatar = db.query(models.ProfileAvatar).filter(id == id).first()
-
-    if avatar is None:
+def read_profile_avatar(db: Session, avatar_id: str):
+    print(id)
+    try:
+        profile_avatar = db.query(models.ProfileAvatar).filter(models.ProfileAvatar.id == avatar_id ).one()
+    except NoResultFound:
         raise HTTPException(HTTP_404_NOT_FOUND, 'Avatar not found')
 
-    return avatar
+    return profile_avatar
 
 
 async def update_profile_avatar(db: Session, avatar: schemas.AvatarIn, profile: models.Profile, file: UploadFile):
@@ -740,7 +743,7 @@ def read_comments_by_reflection_id(db: Session, reflection_id: int):
 def filter_reflection_comments(db: Session, reflection_id: int, sorts: schemas.CommentSorts):
     query = db.query(models.Comment).filter(
         models.Comment.reflection_id == reflection_id)
-    query = sort_from_schema(query, schemas.CommentSorts)
+    query = sort_from_schema(query, sorts)
 
     return query.all()
 

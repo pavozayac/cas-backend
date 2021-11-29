@@ -92,6 +92,8 @@ async def get_reflection_comments(id: int, sorts: schemas.CommentSorts, db: Sess
 
     check_access_from_visibility(reflection, profile)
 
+    print(sorts)
+
     return crud.filter_reflection_comments(db, id, sorts)
 
 #
@@ -120,7 +122,7 @@ async def get_comment_by_id(reflection_id: int, comment_id: int, db: Session = D
 async def delete_comment(comment_id: int, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     comment = crud.read_comment_by_id(db, comment_id)
 
-    check_object_ownership(comment, 'profile_id', profile)
+    check_object_ownership(comment, profile, 'profile_id')
 
     crud.delete_comment(db, comment)
 
