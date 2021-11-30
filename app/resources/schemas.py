@@ -69,7 +69,7 @@ class SuperProfileIn(ProfileBase):
 
 class Profile(ProfileBase):
     id: int
-    group_id: Optional[int]
+    group_id: Optional[str]
     date_joined: date
     post_visibility: int
     avatar: Optional[Avatar]
@@ -78,6 +78,7 @@ class Profile(ProfileBase):
         orm_mode = True
 
 class ProfileFilters(BaseModel):
+    id: Optional[int]
     group_id: Optional[int]
     post_visibility: Optional[int]
     last_online_gte: Optional[date]
@@ -163,10 +164,17 @@ class Token(BaseModel):
 
 class GroupBase(BaseModel):
     name: str
+    description: str
     graduation_year: int
 
 class GroupIn(GroupBase):
     pass
+
+class BulkGroup(BaseModel):
+    id: str
+
+    class Config:
+        orm_mode = True
 
 class Group(GroupBase):
     id: str

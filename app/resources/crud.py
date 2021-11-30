@@ -222,6 +222,8 @@ def delete_confirmation_code(db: Session, confirmation_code: models.Confirmation
 from secrets import token_urlsafe
 
 def create_group(db: Session, group: schemas.GroupIn, coordinator_id: int):
+    coordinator = db.query(models.Profile).filter(models.Profile.id == coordinator_id).one()
+
     new_group = models.Group(
         id=token_urlsafe(8),
         coordinator_id=coordinator_id,
@@ -233,6 +235,10 @@ def create_group(db: Session, group: schemas.GroupIn, coordinator_id: int):
     db.add(new_group)
     db.commit()
     db.refresh(new_group)
+
+    coordinator.group = new_group
+    db.commit()
+
     return new_group
 
 
@@ -298,22 +304,36 @@ def read_group_avatar(db: Session, id: str):
     return avatar
 
 
-async def update_group_avatar(db: Session, avatar: schemas.AvatarIn, group: models.Profile, file: UploadFile):
-    generated_path, id = await save_generic_attachment(file)
+async def update_group_avatar(db: Session, avatar: schemas.AvatarIn, group: models.Group, file: UploadFile):
+    
+    if group is None:
+        raise HTTPException(HTTP_404_NOT_FOUND, 'Group not found')
 
-    if not os.path.exists(group.avatar.saved_path):
-        raise HTTPException(status.HTTP_409_CONFLICT,
-                            'The attachment is not available.')
 
-    avatar_obj = models.ProfileAvatar(
-        id=str(id),
+    generated_path, attachment_id = await save_generic_attachment(file)
+
+    if group.avatar:
+        if not os.path.exists(group.avatar.saved_path):
+            raise HTTPException(status.HTTP_409_CONFLICT,
+                                'The attachment is not available.')
+
+    avatar_obj = models.GroupAvatar(
+        id=str(attachment_id),
         filename=avatar.filename,
         saved_path=generated_path,
         date_added=date.today()
     )
 
-    db.delete(group.avatar)
+
+
+    if group.avatar:
+        db.delete(group.avatar)
+
+
     group.avatar = avatar_obj
+
+    print('bruh')
+
     db.commit()
     db.refresh(avatar_obj)
 
@@ -483,6 +503,8 @@ async def update_profile_avatar(db: Session, avatar: schemas.AvatarIn, profile: 
         date_added=date.today()
     )
 
+    if profile.avatar:
+        db.delete(profile.avatar)
     profile.avatar = avatar_obj
     db.commit()
     db.refresh(avatar_obj)

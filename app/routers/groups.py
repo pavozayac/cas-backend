@@ -17,7 +17,7 @@ router = APIRouter()
 #   Advanced queries for groups
 #
 
-@router.post('/query', response_model=List[schemas.Group])
+@router.post('/query', response_model=List[schemas.BulkGroup])
 async def filter_groups(filters: schemas.GroupFilters, sorts: schemas.GroupSorts, db: Session = Depends(Database)):
     return crud.filter_groups(db, filters, sorts)
 
@@ -27,6 +27,9 @@ async def filter_groups(filters: schemas.GroupFilters, sorts: schemas.GroupSorts
 
 @router.post('/', response_model=schemas.Group)
 async def add_group(group: schemas.GroupIn, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+    if profile.group is not None:
+        raise HTTPException(HTTP_409_CONFLICT, 'You are already a coordinator of another group.')
+
     return crud.create_group(db, group, profile.id)
 
 @router.get('/{id}', response_model=schemas.Group)
@@ -106,7 +109,7 @@ async def deny_group_join_request(id: int, db: Session = Depends(Database)):
 
 @router.post('/{id}/join-requests', response_model=schemas.GroupJoinRequest)
 async def post_join_request(id: int, join_request: schemas.GroupJoinRequestIn, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
-    if profile.group_id is not None:
+    if profile.group is not None:
         raise HTTPException(HTTP_409_CONFLICT, 'In order to send a join request you need to leave the current group.')
 
     group = crud.read_group_by_id(db, id)
@@ -122,30 +125,30 @@ async def post_join_request(id: int, join_request: schemas.GroupJoinRequestIn, d
 #   CRUD for avatar
 #
 
-@router.get('/avatar/{id}')
+@router.get('/avatar/{id}/')
 async def get_avatar_by_id(id: str, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     avatar = crud.read_group_avatar(db, id)
     print(avatar.saved_path)
 
     return FileResponse(avatar.saved_path)
 
-@router.post('/avatar', response_model=schemas.Avatar)
-async def add_group_avatar(file: UploadFile = Form(...), db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
-    check_object_ownership()
+# @router.post('/avatar', response_model=schemas.Avatar)
+# async def add_group_avatar(file: UploadFile = Form(...), db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+#     check_object_ownership()
 
-    avatar_in = schemas.AvatarIn(filename=file.filename)
-    avatar = await crud.create_group_avatar(db, avatar_in, profile, file)
+#     avatar_in = schemas.AvatarIn(filename=file.filename)
+#     avatar = await crud.create_group_avatar(db, avatar_in, profile, file)
 
-    return avatar
+#     return avatar
 
-@router.put('/avatar', response_model=schemas.Avatar)
+@router.put('/avatar/', response_model=schemas.Avatar)
 async def update_group_avatar(file: UploadFile = Form(...), db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     avatar_in = schemas.AvatarIn(filename=file.filename)
-    avatar = await crud.update_group_avatar(db, avatar_in, profile, file)
+    avatar = await crud.update_group_avatar(db, avatar_in, profile.group, file)
 
     return avatar
 
-@router.delete('/avatar')
+@router.delete('/avatar/')
 async def delete_group_avatar(db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     crud.delete_group_avatar(db, profile)
 

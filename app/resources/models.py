@@ -20,7 +20,7 @@ class Profile(Base):
     is_moderator = Column(Boolean, default=False)
     is_admin = Column(Boolean, default=False)
 
-    group_id = Column(Integer, ForeignKey('groups.id'), nullable=True)
+    group_id = Column(String(10), ForeignKey('groups.id'), nullable=True)
     group = relationship('Group', back_populates='members', foreign_keys=[group_id])
 
     group_requests = relationship('GroupJoinRequest', back_populates='profile')
@@ -98,10 +98,11 @@ class Group(Base):
 
     group_requests = relationship('GroupJoinRequest', back_populates='group')
 
-    avatar_id = Column(Integer, ForeignKey('group_avatars.id'), nullable=True)
+    avatar_id = Column(VARCHAR(50), ForeignKey('group_avatars.id'), nullable=True)
     avatar = relationship('GroupAvatar', backref=backref('group', uselist=False), cascade='all, delete')
 
     name = Column(String)
+    description = Column(String, default="")
     graduation_year = Column(Integer)
     date_created = Column(Date)
 
@@ -109,7 +110,7 @@ class Group(Base):
 class GroupAvatar(Base):
     __tablename__ = 'group_avatars'
 
-    id = Column(Integer, primary_key=True)
+    id = Column(VARCHAR(50), primary_key=True)
 
     saved_path = Column(String)
     filename = Column(String)
