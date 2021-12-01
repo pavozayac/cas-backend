@@ -10,6 +10,7 @@ from .auth import LoginAuth
 from ..database import Database
 from ..utils import check_object_ownership, sort_from_schema, filter_from_schema
 from typing import List, Optional
+from sqlalchemy.orm.exc import NoResultFound
 
 router = APIRouter()
 
@@ -33,21 +34,36 @@ async def add_group(group: schemas.GroupIn, db: Session = Depends(Database), pro
     return crud.create_group(db, group, profile.id)
 
 @router.get('/{id}', response_model=schemas.Group)
-async def get_group(id: int, db: Session = Depends(Database)):
+async def get_group(id: str, db: Session = Depends(Database)):
+    try:
+        group = crud.read_group_by_id(db, id)
+    except NoResultFound:
+        raise HTTPException(HTTP_404_NOT_FOUND, 'Group not found')
+    
     return crud.read_group_by_id(db, id)
 
 @router.put('/{id}', response_model=schemas.Group)
-async def put_group(id: int, data: schemas.GroupIn, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
-    group = crud.read_group_by_id(db, id)
-    check_object_ownership(group, 'coordinator_id', profile)
+async def put_group(id: str, data: schemas.GroupIn, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+    try:
+        group = crud.read_group_by_id(db, id)
+    except NoResultFound:
+        raise HTTPException(HTTP_404_NOT_FOUND, 'Group not found')
+
+    check_object_ownership(group, profile, 'coordinator_id')
 
     return crud.update_group(db, group, data)
 
 
 @router.delete('/{id}')
-async def delete_group(id: int, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
-    group = crud.read_group_by_id(db, id)
-    check_object_ownership(group, 'coordinator_id', profile)
+async def delete_group(id: str, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+    try:
+        group = crud.read_group_by_id(db, id)
+    except NoResultFound:
+        raise HTTPException(HTTP_404_NOT_FOUND, 'Group not found')
+    
+    
+    check_object_ownership(group, profile, 'coordinator_id')
+    
     crud.delete_group(db, group)
 
     return {
@@ -59,9 +75,9 @@ async def delete_group(id: int, db: Session = Depends(Database), profile: models
 #
 
 @router.get('/{id}/join-requests', response_model=List[schemas.GroupJoinRequest])
-async def get_join_requests(id: int, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+async def get_join_requests(id: str, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     group = crud.read_group_by_id(db, id)
-    check_object_ownership(group, 'coordinator_id', profile)
+    check_object_ownership(group, profile, 'coordinator_id')
 
     return group.group_requests
 
@@ -108,7 +124,7 @@ async def deny_group_join_request(id: int, db: Session = Depends(Database)):
 
 
 @router.post('/{id}/join-requests', response_model=schemas.GroupJoinRequest)
-async def post_join_request(id: int, join_request: schemas.GroupJoinRequestIn, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+async def post_join_request(id: str, join_request: schemas.GroupJoinRequestIn, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     if profile.group is not None:
         raise HTTPException(HTTP_409_CONFLICT, 'In order to send a join request you need to leave the current group.')
 

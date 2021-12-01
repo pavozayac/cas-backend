@@ -1,6 +1,7 @@
 from datetime import datetime
 from sqlalchemy import Column, ForeignKey, String, Boolean, Date, Integer, Enum, DateTime, Table, Text, Unicode, event, JSON, VARCHAR
 from sqlalchemy.orm import relationship, backref
+from sqlalchemy.ext.hybrid import hybrid_property
 from os import remove as remove_file
 
 from sqlalchemy.sql.functions import func
@@ -41,6 +42,10 @@ class Profile(Base):
 
     sent_messages = relationship('Message', back_populates='sender', foreign_keys='[Message.sender_id]')
     received_messages = relationship('Message', back_populates='receiver', foreign_keys='[Message.receiver_id]')
+
+    @hybrid_property
+    def reflections_count(self):
+        return len(self.reflections)
 
 #   This model will be used for profile pictures
 class ProfileAvatar(Base):
@@ -102,10 +107,20 @@ class Group(Base):
     avatar = relationship('GroupAvatar', backref=backref('group', uselist=False), cascade='all, delete')
 
     name = Column(String)
-    description = Column(String, default="")
+    description = Column(String)
     graduation_year = Column(Integer)
     date_created = Column(Date)
 
+    @hybrid_property
+    def members_count(self):
+        return len(self.members)
+
+    @hybrid_property
+    def reflections_count(self):
+        sum = 0
+        for member in self.members:
+            sum += member.reflections_count
+        return sum
 #   This model will be used for profile pictures
 class GroupAvatar(Base):
     __tablename__ = 'group_avatars'

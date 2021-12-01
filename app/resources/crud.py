@@ -76,8 +76,8 @@ def read_profile_by_foreign_email(db: Session, email: str):
 
 def filter_profiles(db: Session, filters: schemas.ProfileFilters, sorts: schemas.ProfileSorts):
     search = db.query(models.Profile)
-    search = filter_from_schema(search, models.Profile, filters)
-    search = sort_from_schema(search, models.Profile, sorts)
+    search = filter_from_schema(search, filters)
+    search = sort_from_schema(search, sorts)
 
     return search.all()
 
@@ -227,8 +227,7 @@ def create_group(db: Session, group: schemas.GroupIn, coordinator_id: int):
     new_group = models.Group(
         id=token_urlsafe(8),
         coordinator_id=coordinator_id,
-        name=group.name,
-        graduation_year=group.graduation_year,
+        **group.dict(),
         date_created=date.today()
     )
 
@@ -242,8 +241,8 @@ def create_group(db: Session, group: schemas.GroupIn, coordinator_id: int):
     return new_group
 
 
-def read_group_by_id(db: Session, id: int):
-    return db.query(models.Group).filter(models.Group.id == id).first()
+def read_group_by_id(db: Session, id: str):
+    return db.query(models.Group).filter(models.Group.id == id).one()
 
 
 def filter_groups(db: Session, filters: schemas.GroupFilters, sorts: schemas.GroupSorts):
@@ -255,9 +254,10 @@ def filter_groups(db: Session, filters: schemas.GroupFilters, sorts: schemas.Gro
 
 
 def update_group(db: Session, instance: models.Group, group: schemas.GroupIn):
-    instance.coordinator_id = group.coordinator_id
+    # instance.coordinator_id = group.coordinator_id
     instance.name = group.name
     instance.graduation_year = group.graduation_year
+    instance.description = group.description
 
     db.commit()
     db.refresh(instance)

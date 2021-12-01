@@ -66,6 +66,11 @@ class SuperProfileIn(ProfileBase):
     is_admin: bool  
     is_moderator: bool
 
+class BulkProfile(BaseModel):
+    id: int
+
+    class Config:
+        orm_mode = True
 
 class Profile(ProfileBase):
     id: int
@@ -73,13 +78,14 @@ class Profile(ProfileBase):
     date_joined: date
     post_visibility: int
     avatar: Optional[Avatar]
+    reflections_count: int
 
     class Config:
         orm_mode = True
 
 class ProfileFilters(BaseModel):
     id: Optional[int]
-    group_id: Optional[int]
+    group_id: Optional[str]
     post_visibility: Optional[int]
     last_online_gte: Optional[date]
     last_online_lte: Optional[date]
@@ -95,6 +101,9 @@ class ProfileSorts(BaseModel):
     last_online: Optional[str]
     first_name: Optional[str]
 
+    class Meta:
+        source = models.Profile
+
 #
 #   BasicLogin schemas
 #
@@ -105,6 +114,14 @@ class BasicLoginBase(BaseModel):
 class BasicLoginIn(BasicLoginBase):
     password: str
 
+    @validator('password')
+    def password_validator(cls, value: str):
+        assert len(value) >= 8
+        assert any(character.isdigit() for character in value)
+        assert any(character.isupper() for character in value)
+
+        return value
+
 class BasicLoginSignIn(BasicLoginBase):
     password: str
     
@@ -113,6 +130,8 @@ class BasicLogin(BasicLoginBase):
     password: str
     verification_sent: bool
     verified: bool
+
+    
 
     class Config:
         orm_mode = True
@@ -181,6 +200,8 @@ class Group(GroupBase):
     coordinator_id: int
     date_created: date
     avatar: Optional[Avatar]
+    members_count: int
+    reflections_count: int
 
     class Config:
         orm_mode = True

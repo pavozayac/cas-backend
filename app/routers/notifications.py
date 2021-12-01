@@ -31,7 +31,7 @@ async def filter_posted_notifications(sorts: schemas.NotificationSorts, db: Sess
 async def delete_notification(id: int, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     notification = crud.read_notification_by_id(db, id)
 
-    check_object_ownership(notification, 'profile_id', profile)
+    check_object_ownership(notification, profile, 'profile_id')
 
     crud.delete_notification(db, notification)
 
