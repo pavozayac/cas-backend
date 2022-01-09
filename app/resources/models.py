@@ -134,10 +134,8 @@ class GroupAvatar(Base):
 class GroupJoinRequest(Base):   
     __tablename__ = 'group_requests'
 
-    id = Column(Integer, primary_key=True)
-
-    group_id = Column(String(10), ForeignKey(Group.id))
-    profile_id = Column(Integer, ForeignKey(Profile.id))
+    group_id = Column(String(10), ForeignKey(Group.id), primary_key=True)
+    profile_id = Column(Integer, ForeignKey(Profile.id), primary_key=True)
     
     group = relationship(Group, back_populates='group_requests')
     profile = relationship(Profile, back_populates='group_requests')

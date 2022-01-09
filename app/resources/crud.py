@@ -3,6 +3,7 @@ import sqlalchemy
 from sqlalchemy.orm import Session, query
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.relationships import foreign
+from sqlalchemy.sql.schema import UniqueConstraint
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 from . import schemas, models
 from .. import settings
@@ -357,15 +358,18 @@ def delete_group_avatar(db: Session, group: models.Profile):
 #   GroupJoinRequests CRUD
 #
 
-def create_group_join_request(db: Session, profile_id: int, group_join: schemas.GroupJoinRequestIn):
+def create_group_join_request(db: Session, profile_id: int, group_id: int):
     group_join_obj = models.GroupJoinRequest(
-        group_id=group_join.group_id,
+        group_id=group_id,
         profile_id=profile_id,
         date_added=date.today()
     )
 
-    db.add(group_join_obj)
-    db.commit()
+    try:
+        db.add(group_join_obj)
+        db.commit()
+    except IntegrityError:
+        raise HTTPException(HTTP_409_CONFLICT, 'Join request already posted')
     db.refresh(group_join_obj)
     return group_join_obj
 

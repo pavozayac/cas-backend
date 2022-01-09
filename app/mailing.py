@@ -7,15 +7,15 @@ load_dotenv()
 frontend_url = getenv('FRONTEND_URL')
 
 conf = ConnectionConfig(
-    MAIL_USERNAME="casportal.testmail",
+    MAIL_USERNAME="casportal.testmail@gmail.com",
     MAIL_PASSWORD="jL7QHh36SnxFm2T",
-    MAIL_FROM="casportal.testmail@casportal.com",
+    MAIL_FROM="casportal.testmail@gmail.com",
     MAIL_PORT=587,
     MAIL_SERVER="smtp.gmail.com",
     MAIL_TLS=True,
     MAIL_SSL=False,
     USE_CREDENTIALS=True,
-    VALIDATE_CERTS=True
+    VALIDATE_CERTS=False
 )
 
 confirmation_html = """

@@ -10,6 +10,7 @@ from fastapi.security.oauth2 import OAuth2PasswordRequestFormStrict
 from jose.exceptions import ExpiredSignatureError
 from jose.jws import sign, verify
 from starlette.responses import JSONResponse
+from starlette.status import HTTP_409_CONFLICT
 from ..resources.models import BasicLogin, Profile
 import datetime
 from fastapi import APIRouter, Depends, Response, Request, Cookie
@@ -145,10 +146,14 @@ async def confirm_email_route(code: str, db: Session = Depends(Database)):
 async def send_recovery_mail_route(recovery_mail_schema: schemas.SendRecoveryMailSchema, db: Session = Depends(Database)):
     profile = crud.read_profile_by_email(db, recovery_mail_schema.email)
 
-    random_code = generate_random_code()
-    crud.create_confirmation_code(db, random_code, profile.id)
+    random_code_str = generate_random_code()
+    code = crud.create_confirmation_code(db, random_code_str, profile.id)
 
-    await send_recovery_mail(recovery_mail_schema.email, random_code)
+    try:
+        await send_recovery_mail(recovery_mail_schema.email, random_code_str)
+    except:
+        crud.delete_confirmation_code(db, code)
+        raise HTTPException(HTTP_409_CONFLICT, 'Could not send recovery mail')
 
     return {
         'detail': 'Recovery mail has been sent'

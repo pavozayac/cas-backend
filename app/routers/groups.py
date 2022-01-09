@@ -124,7 +124,7 @@ async def deny_group_join_request(id: int, db: Session = Depends(Database)):
 
 
 @router.post('/{id}/join-requests', response_model=schemas.GroupJoinRequest)
-async def post_join_request(id: str, join_request: schemas.GroupJoinRequestIn, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+async def post_join_request(id: str, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     if profile.group is not None:
         raise HTTPException(HTTP_409_CONFLICT, 'In order to send a join request you need to leave the current group.')
 
@@ -133,7 +133,7 @@ async def post_join_request(id: str, join_request: schemas.GroupJoinRequestIn, d
     if group is None:
         raise HTTPException(HTTP_404_NOT_FOUND, 'Not group with such id exists.')
 
-    return crud.create_group_join_request(db, profile, join_request)
+    return crud.create_group_join_request(db, profile.id, id)
 
 
 

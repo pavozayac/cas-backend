@@ -116,9 +116,18 @@ class BasicLoginIn(BasicLoginBase):
 
     @validator('password')
     def password_validator(cls, value: str):
-        assert len(value) >= 8
-        assert any(character.isdigit() for character in value)
-        assert any(character.isupper() for character in value)
+        try:
+            assert len(value) >= 8
+        except AssertionError:
+            raise ValueError('Password too short')
+        try:
+            assert any(character.isdigit() for character in value)
+        except AssertionError:
+            raise ValueError('Password must contain at least 1 digit')
+        try:
+            assert any(character.isupper() for character in value)
+        except AssertionError:
+            raise ValueError('Password must contain at least 1 capital character')
 
         return value
 
@@ -227,13 +236,14 @@ class GroupSorts(BaseModel):
 #
 
 # No profile_id because it is set from profile received in auth dependency
-class GroupJoinRequestBase(BaseModel):
-    group_id: int
+# class GroupJoinRequestBase(BaseModel):
+#     group_id: int
 
-class GroupJoinRequestIn(GroupJoinRequestBase):
-    pass
+# class GroupJoinRequestIn(GroupJoinRequestBase):
+#     pass
 
-class GroupJoinRequest(GroupJoinRequestBase):
+class GroupJoinRequest(BaseModel):
+    group_id: str
     profile: Profile
     date_added: date
 
