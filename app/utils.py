@@ -58,8 +58,10 @@ def filter_from_schema(query: Query, schema: BaseModel):
         elif '_lte' in k:
             query = query.filter(
                 getattr(schema.Meta.source, k[:len(k)-4]) >= v)
+        elif '_con' in k:
+            query = query.filter(
+                getattr(schema.Meta.source, k[:len(k)-4]).contains(v))
         elif isinstance(v, dict):
-            print('Found instance of the BaseModel')
             cleaned_subquery = {
                 sub_key: sub_value
                 for sub_key, sub_value in v.items()
@@ -73,6 +75,9 @@ def filter_from_schema(query: Query, schema: BaseModel):
                 elif '_lte' in sub_key:
                     query = query.join(getattr(schema, k).Meta.source, aliased=True).filter(
                         getattr(getattr(schema, k).Meta.source, sub_key[:len(sub_key)-4]) >= sub_value)
+                elif '_con' in sub_key:
+                    query = query.join(getattr(schema, k).Meta.source, aliased=True).filter(
+                        getattr(getattr(schema, k).Meta.source, sub_key[:len(sub_key)-4]).contains(sub_value))
                 else:
                     query = query.join(getattr(schema, k).Meta.source, aliased=True).filter_by(**{
                         sub_key: sub_value

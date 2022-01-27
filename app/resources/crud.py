@@ -372,10 +372,10 @@ def create_group_join_request(db: Session, profile_id: int, group_id: int):
         raise HTTPException(HTTP_409_CONFLICT, 'Join request already posted')
     db.refresh(group_join_obj)
     return group_join_obj
+        
 
-
-def read_group_join_request_by_id(db: Session, id: int):
-    return db.query(models.GroupJoinRequest).filter(models.GroupJoinRequest.id == id).first()
+def read_group_join_request_by_ids(db: Session, group_id: int, profile_id: int):
+    return db.query(models.GroupJoinRequest).filter(models.GroupJoinRequest.group_id == group_id and models.GroupJoinRequest.profile_id == profile_id).first()
 
 
 def read_group_join_requests_by_group(db: Session, group_id: int):

@@ -377,6 +377,9 @@ class ReflectionFilters(BaseModel):
     activity: Optional[bool]
     service: Optional[bool]
     profile: Optional[ProfileFilters]
+    date_added_gte: Optional[date]
+    date_added_lte: Optional[date]
+    full_text_con: Optional[str]
 
     class Meta:
         source = models.Reflection

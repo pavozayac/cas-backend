@@ -212,6 +212,10 @@ class Reflection(Base):
 
     tags = relationship('Tag', secondary=tags_reflections, back_populates='reflections')
 
+    @hybrid_property
+    def full_text(self):
+        return self.title + self.text_content
+
 class Tag(Base):
     __tablename__ = 'tags'
 

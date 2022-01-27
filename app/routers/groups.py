@@ -81,9 +81,9 @@ async def get_join_requests(id: str, db: Session = Depends(Database), profile: m
 
     return group.group_requests
 
-@router.post('/accept-request/{id}')
-async def accept_group_join_request(id: int, db: Session = Depends(Database)):
-    request = crud.read_group_join_request_by_id(db, id)
+@router.post('/{group_id}/accept-request/{profile_id}')
+async def accept_group_join_request(group_id: str, profile_id: int, db: Session = Depends(Database)):
+    request = crud.read_group_join_request_by_ids(db, group_id, profile_id)
 
     request.profile.group = request.group
     
@@ -103,9 +103,9 @@ async def accept_group_join_request(id: int, db: Session = Depends(Database)):
     }
     
 
-@router.post('/deny-request/{id}')
-async def deny_group_join_request(id: int, db: Session = Depends(Database)):
-    request = crud.read_group_join_request_by_id(db, id)
+@router.post('/{group_id}/deny-request/{profile_id}')
+async def accept_group_join_request(group_id: str, profile_id: int, db: Session = Depends(Database)):
+    request = crud.read_group_join_request_by_ids(db, group_id, profile_id)
 
     notification = models.Notification(
         profile_id = request.profile_id,

@@ -32,6 +32,17 @@ async def filter_reflections(filters: schemas.ReflectionFilters, sorts: schemas.
 
     return reflections
 
+@router.post('/query-detail', response_model=List[schemas.Reflection])
+async def filter_reflections(filters: schemas.ReflectionFilters, sorts: schemas.ReflectionSorts, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+    reflections = crud.filter_reflections(db, filters, sorts, profile)
+    for reflection in reflections:
+        try:
+            check_access_from_visibility(reflection, profile)
+        except HTTPException:
+            reflections.remove(reflection)
+
+    return reflections
+
 @router.post('/favourites', response_model=List[schemas.Reflection])
 async def favourite_reflections(filters: schemas.ReflectionFilters, sorts: schemas.ReflectionSorts, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     reflections = crud.filter_favourite_reflections(db, filters, sorts, profile)
