@@ -81,9 +81,12 @@ async def get_join_requests(id: str, db: Session = Depends(Database), profile: m
 
     return group.group_requests
 
-@router.post('/{group_id}/accept-request/{profile_id}')
-async def accept_group_join_request(group_id: str, profile_id: int, db: Session = Depends(Database)):
-    request = crud.read_group_join_request_by_ids(db, group_id, profile_id)
+@router.post('/{id}/accept-request/{profile_id}')
+async def accept_group_join_request(id: str, profile_id: int, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+    group = crud.read_group_by_id(db, id)
+    check_object_ownership(group, profile, 'coordinator_id')
+
+    request = crud.read_group_join_request_by_ids(db, id, profile_id)
 
     request.profile.group = request.group
     
@@ -103,8 +106,11 @@ async def accept_group_join_request(group_id: str, profile_id: int, db: Session 
     }
     
 
-@router.post('/{group_id}/deny-request/{profile_id}')
-async def accept_group_join_request(group_id: str, profile_id: int, db: Session = Depends(Database)):
+@router.post('/{id}/deny-request/{profile_id}')
+async def accept_group_join_request(group_id: str, profile_id: int, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+    group = crud.read_group_by_id(db, id)
+    check_object_ownership(group, profile, 'coordinator_id')
+    
     request = crud.read_group_join_request_by_ids(db, group_id, profile_id)
 
     notification = models.Notification(
@@ -135,7 +141,19 @@ async def post_join_request(id: str, db: Session = Depends(Database), profile: m
 
     return crud.create_group_join_request(db, profile.id, id)
 
+@router.delete('/{id}/delete-member/{profile_id}')
+async def delete_group_member(id: str, profile_id: int, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+    group = crud.read_group_by_id(db, id)
+    check_object_ownership(group, profile, 'coordinator_id')
 
+    profile = crud.read_profile_by_id(db, profile_id)
+
+    if profile is None:
+        raise HTTPException(HTTP_404_NOT_FOUND, 'Profile with this id does not exist.')
+
+    profile.group_id = None
+
+    db.commit()
 
 #
 #   CRUD for avatar

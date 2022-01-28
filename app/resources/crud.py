@@ -297,7 +297,7 @@ async def create_group_avatar(db: Session, avatar: schemas.AvatarIn, group: mode
 
 
 def read_group_avatar(db: Session, id: str):
-    avatar = db.query(models.GroupAvatar).filter(id == id).first()
+    avatar = db.query(models.GroupAvatar).filter(models.GroupAvatar.id == id).first()
 
     if avatar is None:
         raise HTTPException(HTTP_404_NOT_FOUND, 'Avatar not found')

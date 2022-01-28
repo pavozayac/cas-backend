@@ -50,6 +50,10 @@ async def put_current_profile(data: schemas.ProfileIn, profile: Profile = Depend
 
 @router.put('/current/leave-group', response_model=schemas.Profile)
 async def leave_current_group(profile: Profile = Depends(LoginAuth), db: Session = Depends(Database)):
+    if profile.group.coordinator_id == profile.id:
+        group = crud.read_group_by_id(db, profile.group_id)
+        crud.delete_group(db, group)
+    
     profile.group = None
 
     db.commit()

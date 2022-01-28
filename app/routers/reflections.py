@@ -24,11 +24,12 @@ router = APIRouter()
 @router.post('/query', response_model=List[schemas.BulkReflection])
 async def filter_reflections(filters: schemas.ReflectionFilters, sorts: schemas.ReflectionSorts, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     reflections = crud.filter_reflections(db, filters, sorts, profile)
-    for reflection in reflections:
-        try:
-            check_access_from_visibility(reflection, profile)
-        except HTTPException:
-            reflections.remove(reflection)
+    if len(reflections) > 1:
+        for reflection in reflections:
+            try:
+                check_access_from_visibility(reflection, profile)
+            except HTTPException:
+                reflections.remove(reflection)
 
     return reflections
 
