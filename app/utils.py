@@ -79,9 +79,8 @@ def filter_from_schema(query: Query, schema: BaseModel):
                     query = query.join(getattr(schema, k).Meta.source, aliased=True).filter(
                         getattr(getattr(schema, k).Meta.source, sub_key[:len(sub_key)-4]).contains(sub_value))
                 else:
-                    query = query.join(getattr(schema, k).Meta.source, aliased=True).filter_by(**{
-                        sub_key: sub_value
-                    })
+                    query = query.join(getattr(schema, k).Meta.source, aliased=True).filter(
+                        getattr(getattr(schema, k).Meta.source, sub_key) == sub_value)
         else:
             query = query.filter(getattr(schema.Meta.source, k) == v)
 
