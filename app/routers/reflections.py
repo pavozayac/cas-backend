@@ -21,7 +21,7 @@ router = APIRouter()
 #   Queries, that is advanced search and filtering, sorting
 #
 
-@router.post('/query', response_model=List[schemas.BulkReflection])
+@router.post('/query', response_model=schemas.BulkReflectionResponse)
 async def filter_reflections(filters: schemas.ReflectionFilters, sorts: schemas.ReflectionSorts, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     reflections = crud.filter_reflections(db, filters, sorts, profile)
     if len(reflections) > 1:
@@ -31,7 +31,7 @@ async def filter_reflections(filters: schemas.ReflectionFilters, sorts: schemas.
             except HTTPException:
                 reflections.remove(reflection)
 
-    return reflections
+    return schemas.BulkReflectionResponse(items=reflections, count=len(reflections))
 
 @router.post('/query-detail', response_model=List[schemas.Reflection])
 async def filter_reflections(filters: schemas.ReflectionFilters, sorts: schemas.ReflectionSorts, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
@@ -99,7 +99,7 @@ async def delete_reflection(id: int, db: Session = Depends(Database), profile: m
 #
 
 @router.post('/{id}/comments/query', response_model=List[schemas.Comment])
-async def get_reflection_comments(id: int, sorts: schemas.CommentSorts, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+async def get_reflection_comments(id: int, sorts: schemas.CommentSorts, filters: schemas.CommentFilters, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     reflection = crud.read_reflection_by_id(db, id, profile)
 
     check_access_from_visibility(reflection, profile)

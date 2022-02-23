@@ -16,7 +16,6 @@ class Profile(Base):
     last_name = Column(String(100))
     date_joined = Column(Date)
     # 0 = only coordinator, 1 = only group, 2 = every logged in user, validation is provided in schemas
-    post_visibility = Column(Integer)
     last_online = Column(Date)
     is_moderator = Column(Boolean, default=False)
     is_admin = Column(Boolean, default=False)
@@ -201,6 +200,9 @@ class Reflection(Base):
     creativity = Column(Boolean)
     activity = Column(Boolean)
     service = Column(Boolean)
+
+    post_visibility = Column(Integer, default=0)
+
 
     attachments = relationship('Attachment', back_populates='reflection')
 

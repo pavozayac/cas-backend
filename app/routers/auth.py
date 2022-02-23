@@ -105,7 +105,7 @@ def create_token(claims: dict):
 @router.post('/register', response_model=schemas.Profile)
 async def register(login: RegisterIn, db: Session = Depends(Database)):
     profile_in = schemas.ProfileIn(
-        first_name=login.first_name, last_name=login.last_name, post_visibility=login.post_visibility)
+        first_name=login.first_name, last_name=login.last_name)
     created_profile = crud.create_profile(db, profile_in)
 
     basic_in = BasicLoginIn(email=login.email, password=login.password)

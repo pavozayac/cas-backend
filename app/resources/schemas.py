@@ -4,6 +4,14 @@ from typing import List, Optional
 from pydantic import BaseModel, Field, EmailStr, validator, ValidationError, root_validator
 from datetime import date, datetime
 from ..resources import models
+
+#
+#   Pagination
+#
+
+class Pagination(BaseModel):
+    limit: Optional[int]
+    page: Optional[int]
  
 #
 #   Attachments
@@ -50,13 +58,7 @@ class Avatar(AvatarBase):
 class ProfileBase(BaseModel):
     first_name: str
     last_name: str
-    post_visibility: int
-
-    @validator('post_visibility')
-    def visibility_validation(cls, v):
-        if v not in [0,1,2]:
-            raise ValidationError('Post visibility not within range')
-        return v
+    # post_visibility: int
 
 class ProfileIn(ProfileBase):
     pass
@@ -76,7 +78,7 @@ class Profile(ProfileBase):
     id: int
     group_id: Optional[str]
     date_joined: date
-    post_visibility: int
+    # post_visibility: int
     avatar: Optional[Avatar]
     reflections_count: int
 
@@ -86,23 +88,32 @@ class Profile(ProfileBase):
 class ProfileFilters(BaseModel):
     id: Optional[int]
     group_id: Optional[str]
-    post_visibility: Optional[int]
     last_online_gte: Optional[date]
     last_online_lte: Optional[date]
     date_joined_gte: Optional[date]
     date_joined_lte: Optional[date]
+    pagination: Optional[Pagination]
 
     class Meta:
         source = models.Profile
 
 class ProfileSorts(BaseModel):
     date_joined: Optional[str]
-    post_visibility: Optional[str]
     last_online: Optional[str]
     first_name: Optional[str]
 
     class Meta:
         source = models.Profile
+
+class BulkProfile(BaseModel):
+    id: int
+
+    class Config:
+        orm_mode = True
+
+class BulkProfileResponse(BaseModel):
+    items: List[BulkProfile]
+    count: int
 
 #
 #   BasicLogin schemas
@@ -204,6 +215,10 @@ class BulkGroup(BaseModel):
     class Config:
         orm_mode = True
 
+class BulkGroupResponse(BaseModel):
+    items: List[BulkGroup]
+    count: int
+
 class Group(GroupBase):
     id: str
     coordinator_id: int
@@ -220,6 +235,7 @@ class GroupFilters(BaseModel):
     name: Optional[str]
     date_created_gte: Optional[date]
     date_created_lte: Optional[date]
+    pagination: Optional[Pagination]
 
     class Meta:
         source = models.Group
@@ -314,11 +330,18 @@ class Comment(CommentBase):
     class Config:
         orm_mode = True
 
+class CommentFilters(Pagination):
+    pass
+
 class BulkComment(BaseModel):
     id: int
 
     class Config:
         orm_mode = True
+
+class BulkCommentResponse(BaseModel):
+    items: List[BulkComment]
+    count: int
 
 # Comments cannot be filtered, as basic filtering functionality is provided via the URL (retrieving comments from under a single reflection)
 class CommentSorts(BaseModel):
@@ -337,6 +360,14 @@ class ReflectionBase(BaseModel):
     creativity: bool
     activity: bool
     service: bool
+    post_visibility: int
+
+    @validator('post_visibility')
+    def visibility_validation(cls, v):
+        if v not in [0,1,2]:
+            raise ValidationError('Post visibility not within range')
+        return v
+
 
     @root_validator
     def validate_categories(cls, values):
@@ -371,21 +402,28 @@ class BulkReflection(BaseModel):
     class Config:
         orm_mode = True
 
+class BulkReflectionResponse(BaseModel):
+    items: List[BulkReflection]
+    count: int
+
 class ReflectionFilters(BaseModel):
     title: Optional[str]
     creativity: Optional[bool]
     activity: Optional[bool]
     service: Optional[bool]
     profile: Optional[ProfileFilters]
+    post_visibility: Optional[int]
     date_added_gte: Optional[date]
     date_added_lte: Optional[date]
     full_text_con: Optional[str]
+    pagination: Optional[Pagination]
 
     class Meta:
         source = models.Reflection
 
 class ReflectionSorts(BaseModel):
     title: Optional[str]
+    post_visibility: Optional[int]
     date_added: Optional[str]
 
     class Meta:

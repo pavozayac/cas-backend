@@ -32,12 +32,11 @@ def check_object_ownership(object, profile: models.Profile, field: str = 'profil
 
 
 def check_access_from_visibility(reflection: models.Reflection, profile: models.Profile):
-    if reflection.author.post_visibility == 0:
-        print(1)
+    if reflection.post_visibility == 0:
         if profile.id != reflection.profile_id and not profile.is_admin and not profile.is_moderator and (reflection.author.group and profile != reflection.author.group.coordinator):
             raise CREDENTIALS_EXCEPTION('Unauthorized access')
 
-    elif reflection.author.post_visibility == 1:
+    elif reflection.post_visibility == 1:
         if profile.id != reflection.profile_id \
                 and not profile.is_admin and not profile.is_moderator and (reflection.author.group is not None and profile != reflection.author.group.coordinator) \
                 and profile.group.id != reflection.author.group_id:
@@ -88,8 +87,11 @@ def filter_from_schema(query: Query, schema: BaseModel):
 
 
 def sort_from_schema(query: Query, schema: BaseModel):
-    cleaned: Dict[str, Any] = {k: v for k,
-                               v in schema.dict().items() if v is not None}
+    cleaned: Dict[str, Any] = {
+        k: v
+        for k, v in schema.dict().items()
+        if v is not None
+    }
 
     print(cleaned.items())
 
@@ -100,6 +102,22 @@ def sort_from_schema(query: Query, schema: BaseModel):
             query = query.order_by(desc(getattr(schema.Meta.source, k)))
 
     return query
+
+def paginate(query: Query, schema: BaseModel):
+    cleaned: Dict[str, Any] = {
+        k: v
+        for k, v in schema.dict().items()
+        if v is not None
+    }
+
+    if cleaned.get('page') is not None and cleaned.get('limit') is not None:
+        query = query.limit(cleaned['limit']).offset(cleaned['limit']*cleaned['page'])
+
+    return query
+
+    
+
+
 
 
 async def save_generic_attachment(file: UploadFile):

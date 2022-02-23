@@ -7,7 +7,7 @@ from sqlalchemy.sql.schema import UniqueConstraint
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 from . import schemas, models
 from .. import settings
-from ..utils import filter_from_schema, sort_from_schema, save_generic_attachment, delete_generic_attachment
+from ..utils import filter_from_schema, paginate, sort_from_schema, save_generic_attachment, delete_generic_attachment
 from datetime import date, datetime, timedelta
 from passlib.context import CryptContext
 from fastapi import status, HTTPException, UploadFile
@@ -79,6 +79,7 @@ def filter_profiles(db: Session, filters: schemas.ProfileFilters, sorts: schemas
     search = db.query(models.Profile)
     search = filter_from_schema(search, filters)
     search = sort_from_schema(search, sorts)
+    search = paginate(search, filters)
 
     return search.all()
 
@@ -90,7 +91,6 @@ def update_profile(db: Session, instance: models.Profile, schema: schemas.Profil
 
     instance.first_name = schema.first_name
     instance.last_name = schema.last_name
-    instance.post_visibility = schema.post_visibility
 
     db.commit()
     db.refresh(instance)
@@ -250,6 +250,7 @@ def filter_groups(db: Session, filters: schemas.GroupFilters, sorts: schemas.Gro
     groups = db.query(models.Group)
     groups = filter_from_schema(groups, filters)
     groups = sort_from_schema(groups, sorts)
+    groups = paginate(groups, filters)
 
     return groups.all()
 
@@ -549,6 +550,7 @@ def create_reflection(db: Session, profile_id: int, reflection: schemas.Reflecti
         text_content=reflection.text_content,
         slug=reflection.title + str(datetime.now()),
         date_added=datetime.now(),
+        post_visibility=reflection.post_visibility,
         creativity=reflection.creativity,
         activity=reflection.activity,
         service=reflection.service,
@@ -584,6 +586,7 @@ def filter_reflections(db: Session, filters: schemas.ReflectionFilters, sorts: s
     query = db.query(models.Reflection)
     query = filter_from_schema(query, filters)
     query = sort_from_schema(query, sorts)
+    query = paginate(query, filters)
     reflections = query.all()
 
     for ref in reflections:
@@ -595,6 +598,7 @@ def filter_favourite_reflections(db: Session, filters: schemas.ReflectionFilters
     query = db.query(models.Reflection)
     query = filter_from_schema(query, filters)
     query = sort_from_schema(query, sorts)
+    query = paginate(query, filters)
     reflections = query.all()
 
     favouriteReflections = []
@@ -608,6 +612,7 @@ def filter_favourite_reflections(db: Session, filters: schemas.ReflectionFilters
 def update_reflection(db: Session, instance: models.Reflection, reflection: schemas.ReflectionIn):
     instance.title = reflection.title
     instance.text_content = reflection.text_content
+    instance.post_visibility = reflection.post_visibility
     instance.creativity = reflection.creativity
     instance.activity = reflection.activity
     instance.service = reflection.service
@@ -766,10 +771,11 @@ def read_comments_by_reflection_id(db: Session, reflection_id: int):
     return comments
 
 
-def filter_reflection_comments(db: Session, reflection_id: int, sorts: schemas.CommentSorts):
+def filter_reflection_comments(db: Session, reflection_id: int, sorts: schemas.CommentSorts, filters: schemas.CommentFilters):
     query = db.query(models.Comment).filter(
         models.Comment.reflection_id == reflection_id)
     query = sort_from_schema(query, sorts)
+    query = paginate(query, filters)
 
     return query.all()
 
