@@ -20,8 +20,8 @@ router = APIRouter()
 #
 
 @router.post('/query', response_model=List[schemas.BulkProfile])
-def search_profiles(filters: schemas.ProfileFilters, sorts: schemas.ProfileSorts, db: Session = Depends(Database)):
-    return crud.filter_profiles(db, filters, sorts)
+def search_profiles(filters: schemas.ProfileFilters, sorts: schemas.ProfileSorts, db: Session = Depends(Database), pagination: Optional[schemas.Pagination] = None):
+    return crud.filter_profiles(db, pagination, filters, sorts)
 
 #
 #   CRUD actions for profiles

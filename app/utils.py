@@ -104,14 +104,16 @@ def sort_from_schema(query: Query, schema: BaseModel):
     return query
 
 def paginate(query: Query, schema: BaseModel):
-    cleaned: Dict[str, Any] = {
-        k: v
-        for k, v in schema.dict().items()
-        if v is not None
-    }
+    if schema is not None:
+        print('not none')
+        cleaned: Dict[str, Any] = {
+            k: v
+            for k, v in schema.dict().items()
+            if v is not None
+        }
 
-    if cleaned.get('page') is not None and cleaned.get('limit') is not None:
-        query = query.limit(cleaned['limit']).offset(cleaned['limit']*cleaned['page'])
+        if cleaned.get('page') is not None and cleaned.get('limit') is not None:
+            query = query.limit(cleaned['limit']).offset(cleaned['limit']*cleaned['page'])
 
     return query
 

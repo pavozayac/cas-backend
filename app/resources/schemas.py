@@ -92,7 +92,6 @@ class ProfileFilters(BaseModel):
     last_online_lte: Optional[date]
     date_joined_gte: Optional[date]
     date_joined_lte: Optional[date]
-    pagination: Optional[Pagination]
 
     class Meta:
         source = models.Profile
@@ -235,7 +234,6 @@ class GroupFilters(BaseModel):
     name: Optional[str]
     date_created_gte: Optional[date]
     date_created_lte: Optional[date]
-    pagination: Optional[Pagination]
 
     class Meta:
         source = models.Group
@@ -329,10 +327,7 @@ class Comment(CommentBase):
 
     class Config:
         orm_mode = True
-
-class CommentFilters(Pagination):
-    pass
-
+        
 class BulkComment(BaseModel):
     id: int
 
@@ -416,7 +411,6 @@ class ReflectionFilters(BaseModel):
     date_added_gte: Optional[date]
     date_added_lte: Optional[date]
     full_text_con: Optional[str]
-    pagination: Optional[Pagination]
 
     class Meta:
         source = models.Reflection

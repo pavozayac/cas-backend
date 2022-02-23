@@ -75,11 +75,11 @@ def read_profile_by_foreign_email(db: Session, email: str):
     return login.profile
 
 
-def filter_profiles(db: Session, filters: schemas.ProfileFilters, sorts: schemas.ProfileSorts):
+def filter_profiles(db: Session, pagination: schemas.Pagination, filters: schemas.ProfileFilters, sorts: schemas.ProfileSorts):
     search = db.query(models.Profile)
     search = filter_from_schema(search, filters)
     search = sort_from_schema(search, sorts)
-    search = paginate(search, filters)
+    search = paginate(search, pagination)
 
     return search.all()
 
@@ -246,11 +246,11 @@ def read_group_by_id(db: Session, id: str):
     return db.query(models.Group).filter(models.Group.id == id).one()
 
 
-def filter_groups(db: Session, filters: schemas.GroupFilters, sorts: schemas.GroupSorts):
+def filter_groups(db: Session, pagination: schemas.Pagination, filters: schemas.GroupFilters, sorts: schemas.GroupSorts):
     groups = db.query(models.Group)
     groups = filter_from_schema(groups, filters)
     groups = sort_from_schema(groups, sorts)
-    groups = paginate(groups, filters)
+    groups = paginate(groups, pagination)
 
     return groups.all()
 
@@ -582,23 +582,24 @@ def read_reflection_by_id(db: Session, id: int, profile: models.Profile):
     return reflection
 
 
-def filter_reflections(db: Session, filters: schemas.ReflectionFilters, sorts: schemas.ReflectionSorts, profile: models.Profile):
+def filter_reflections(db: Session, pagination: schemas.Pagination, filters: schemas.ReflectionFilters, sorts: schemas.ReflectionSorts, profile: models.Profile):
     query = db.query(models.Reflection)
     query = filter_from_schema(query, filters)
     query = sort_from_schema(query, sorts)
-    query = paginate(query, filters)
+    count = query.count()
+    query = paginate(query, pagination)
     reflections = query.all()
 
     for ref in reflections:
         ref.is_favourite = True if profile in ref.favouritees else False
-    return reflections
+    return (reflections, count)
 
 
-def filter_favourite_reflections(db: Session, filters: schemas.ReflectionFilters, sorts: schemas.ReflectionSorts, profile: models.Profile):
+def filter_favourite_reflections(db: Session, pagination: schemas.Pagination, filters: schemas.ReflectionFilters, sorts: schemas.ReflectionSorts, profile: models.Profile):
     query = db.query(models.Reflection)
     query = filter_from_schema(query, filters)
     query = sort_from_schema(query, sorts)
-    query = paginate(query, filters)
+    query = paginate(query, pagination)
     reflections = query.all()
 
     favouriteReflections = []
@@ -771,11 +772,11 @@ def read_comments_by_reflection_id(db: Session, reflection_id: int):
     return comments
 
 
-def filter_reflection_comments(db: Session, reflection_id: int, sorts: schemas.CommentSorts, filters: schemas.CommentFilters):
+def filter_reflection_comments(db: Session, reflection_id: int, pagination: schemas.Pagination, sorts: schemas.CommentSorts):
     query = db.query(models.Comment).filter(
         models.Comment.reflection_id == reflection_id)
     query = sort_from_schema(query, sorts)
-    query = paginate(query, filters)
+    query = paginate(query, pagination)
 
     return query.all()
 
