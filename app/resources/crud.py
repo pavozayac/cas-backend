@@ -7,7 +7,7 @@ from sqlalchemy.sql.schema import UniqueConstraint
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 from . import schemas, models
 from .. import settings
-from ..utils import filter_from_schema, paginate, sort_from_schema, save_generic_attachment, delete_generic_attachment
+from ..utils import filter_from_schema, filter_visibility, paginate, sort_from_schema, save_generic_attachment, delete_generic_attachment
 from datetime import date, datetime, timedelta
 from passlib.context import CryptContext
 from fastapi import status, HTTPException, UploadFile
@@ -586,6 +586,7 @@ def filter_reflections(db: Session, pagination: schemas.Pagination, filters: sch
     query = db.query(models.Reflection)
     query = filter_from_schema(query, filters)
     query = sort_from_schema(query, sorts)
+    query = filter_visibility(query, profile)
     count = query.count()
     query = paginate(query, pagination)
     reflections = query.all()
@@ -599,15 +600,22 @@ def filter_favourite_reflections(db: Session, pagination: schemas.Pagination, fi
     query = db.query(models.Reflection)
     query = filter_from_schema(query, filters)
     query = sort_from_schema(query, sorts)
+    query = filter_visibility(query, profile)
+
+    query = query.filter(models.Reflection.favouritees.any(models.Profile.id==profile.id))
+    count = query.count()
+
+    
     query = paginate(query, pagination)
     reflections = query.all()
 
-    favouriteReflections = []
-    for ref in reflections:
-        ref.is_favourite = True if profile in ref.favouritees else False
-        if ref.is_favourite == True:
-            favouriteReflections.append(ref)
-    return favouriteReflections
+    # favouriteReflections = []
+    # for ref in reflections:
+    #     ref.is_favourite = True if profile in ref.favouritees else False
+    #     if ref.is_favourite == True:
+    #         favouriteReflections.append(ref)
+
+    return (reflections, count)
 
 
 def update_reflection(db: Session, instance: models.Reflection, reflection: schemas.ReflectionIn):
@@ -776,9 +784,12 @@ def filter_reflection_comments(db: Session, reflection_id: int, pagination: sche
     query = db.query(models.Comment).filter(
         models.Comment.reflection_id == reflection_id)
     query = sort_from_schema(query, sorts)
+    count = query.count()
     query = paginate(query, pagination)
 
-    return query.all()
+    comments = query.all()
+    
+    return comments, count
 
 
 def update_comment(db: Session, instance: models.Comment, comment: schemas.CommentIn):

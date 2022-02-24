@@ -69,11 +69,11 @@ api.include_router(
     tags=['tags']
 )
 
-api.include_router(
-    messages.router,
-    prefix='',
-    tags=['messages']
-)
+# api.include_router(
+#     messages.router,
+#     prefix='',
+#     tags=['messages']
+# )
 
 
 # @api.get('/bruh', response_model=schemas.Profile)

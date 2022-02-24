@@ -42,6 +42,35 @@ def check_access_from_visibility(reflection: models.Reflection, profile: models.
                 and profile.group.id != reflection.author.group_id:
             raise CREDENTIALS_EXCEPTION('Unauthorized access')
 
+from sqlalchemy import or_, and_
+
+def filter_visibility(query: Query, profile: models.Profile):
+    if profile.is_admin == True:
+        return query
+
+    elif profile.group_id is None:
+        query = query.filter(
+            (models.Reflection.profile_id == profile.id) |
+            (models.Reflection.post_visibility == 2)
+        )
+        return query
+    else:
+        query = query.join(models.Reflection.author).filter(
+            (
+                (models.Reflection.post_visibility == 0) &
+                (models.Reflection.profile_id == profile.id)
+            ) |
+            (
+                (models.Reflection.post_visibility == 1) &
+                (models.Profile.group == profile.group)
+            ) |
+            (models.Reflection.post_visibility == 2)
+
+        )
+        return query
+
+
+
 
 def filter_from_schema(query: Query, schema: BaseModel):
     cleaned: Dict[str, Any] = {

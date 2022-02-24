@@ -24,12 +24,12 @@ router = APIRouter()
 @router.post('/query', response_model=schemas.BulkReflectionResponse)
 async def filter_reflections(filters: schemas.ReflectionFilters, sorts: schemas.ReflectionSorts, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth), pagination: Optional[schemas.Pagination] = None):
     reflections, count = crud.filter_reflections(db, pagination, filters, sorts, profile)
-    if len(reflections) > 1:
-        for reflection in reflections:
-            try:
-                check_access_from_visibility(reflection, profile)
-            except HTTPException:
-                reflections.remove(reflection)
+    # if len(reflections) > 1:
+    #     for reflection in reflections:
+    #         try:
+    #             check_access_from_visibility(reflection, profile)
+    #         except HTTPException:
+    #             reflections.remove(reflection)
 
     return schemas.BulkReflectionResponse(items=reflections, count=count)
 
@@ -44,17 +44,11 @@ async def filter_reflections(filters: schemas.ReflectionFilters, sorts: schemas.
 
 #     return reflections
 
-@router.post('/favourites', response_model=List[schemas.Reflection])
+@router.post('/favourites', response_model=schemas.BulkReflectionResponse)
 async def favourite_reflections(filters: schemas.ReflectionFilters, sorts: schemas.ReflectionSorts, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth), pagination: Optional[schemas.Pagination] = None):
-    reflections = crud.filter_favourite_reflections(db, pagination, filters, sorts, profile)
+    reflections, count = crud.filter_favourite_reflections(db, pagination, filters, sorts, profile)
 
-    for reflection in reflections:
-        try:
-            check_access_from_visibility(reflection, profile)
-        except HTTPException:
-            reflections.remove(reflection)
-
-    return reflections
+    return schemas.BulkReflectionResponse(items=reflections, count=count)
 #   
 #   CRUD actions for reflections
 #
@@ -98,15 +92,16 @@ async def delete_reflection(id: int, db: Session = Depends(Database), profile: m
 #   Advanced queries for comments
 #
 
-@router.post('/{id}/comments/query', response_model=List[schemas.Comment])
+@router.post('/{id}/comments/query', response_model=schemas.BulkCommentResponse)
 async def get_reflection_comments(id: int, pagination: schemas.Pagination, sorts: schemas.CommentSorts, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     reflection = crud.read_reflection_by_id(db, id, profile)
 
     check_access_from_visibility(reflection, profile)
 
-    print(sorts)
-
-    return crud.filter_reflection_comments(db, id, pagination, sorts)
+    comments, count = crud.filter_reflection_comments(db, id, pagination, sorts)
+    
+    return schemas.BulkCommentResponse(items=comments, count=count)
+        
 
 #
 #   CRUD actions for comments
