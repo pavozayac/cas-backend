@@ -411,12 +411,14 @@ def create_notification(db: Session, notification: schemas.NotificationIn):
     return notification_obj
 
 
-def read_notifications_by_recipient(db: Session, profile_id: int):
+def query_notifications_by_recipient(db: Session, sorts: schemas.NotificationSorts, pagination: schemas.Pagination,  profile_id: int):
     notifications = db.query(models.Notification).filter(
         models.Notification.recipients.contains(profile_id)).all()
+    
+    notifications = sort_from_schema(notifications, sorts)
+    
 
     return notifications
-
 
 def filter_authored_notifications(db: Session, profile: models.Profile, sorts: schemas.NotificationSorts):
     notifications = db.query(models.Notification).filter(
