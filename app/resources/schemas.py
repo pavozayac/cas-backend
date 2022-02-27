@@ -280,8 +280,38 @@ class Notification(NotificationBase):
     class Config:
         orm_mode = True
 
+class NotificationRecipientSorts(BaseModel):
+    read: Optional[str]
+
+    class Meta:
+        source = models.NotificationRecipient
+
+class NotificationRecipientFilters(BaseModel):
+    read: Optional[bool]
+
+    class Meta:
+        source = models.NotificationRecipient
+
 class NotificationSorts(BaseModel):
     date_sent: Optional[str]
+    notification_recipients: Optional[NotificationRecipientSorts]
+
+    class Meta:
+        source = models.Notification
+
+class NotificationFilters(BaseModel):
+    notification_recipients: Optional[NotificationRecipientFilters]
+    # notification_recipients_con: Optional[int]
+    # author: Optional[int]
+    class Meta: 
+        source = models.Notification
+
+class BulkNotification(BaseModel):
+    id: int
+
+class BulkNotificationResponse(BaseModel):
+    items: List[BulkNotification]
+    count: int
 
 #
 #   Tags

@@ -127,8 +127,21 @@ def sort_from_schema(query: Query, schema: BaseModel):
     for k, v in cleaned.items():
         if v == 'asc':
             query = query.order_by(asc(getattr(schema.Meta.source, k)))
-        else:  # v == 'desc' in k:
+        elif v == 'desc':  # v == 'desc' in k:
             query = query.order_by(desc(getattr(schema.Meta.source, k)))
+        elif isinstance(v, dict):
+            cleaned_subquery = {
+                sub_key: sub_value
+                for sub_key, sub_value in v.items()
+                if sub_value is not None
+            }   
+
+            for sub_key, sub_value in cleaned_subquery.items():
+                if sub_value == 'asc':
+                    query = query.join(getattr(schema, k).Meta.source, aliased=True).order_by(asc(getattr(schema, k).Meta.source, sub_key))
+                elif sub_value == 'desc':  # v == 'desc' in k:
+                    query = query.join(getattr(schema, k).Meta.source, aliased=True).order_by(desc(getattr(schema, k).Meta.source, sub_key))
+
 
     return query
 

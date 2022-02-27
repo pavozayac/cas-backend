@@ -1,4 +1,5 @@
 from datetime import datetime
+from ntpath import realpath
 from sqlalchemy import Column, ForeignKey, String, Boolean, Date, Integer, Enum, DateTime, Table, Text, Unicode, event, JSON, VARCHAR
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -25,7 +26,7 @@ class Profile(Base):
 
     group_requests = relationship('GroupJoinRequest', back_populates='profile')
 
-    notifications = relationship('Notification', secondary='notifications_recipients', back_populates='recipients')
+    notifications = relationship('NotificationRecipient', back_populates='recipient')
     notifications_authored = relationship('Notification', back_populates='author')
 
     reflections = relationship('Reflection', back_populates='author')
@@ -142,11 +143,14 @@ class GroupJoinRequest(Base):
     date_added = Column(Date)
     #proposal = 
 
-notifiactions_recipients = Table('notifications_recipients', Base.metadata,
-    Column('profile_id', Integer, ForeignKey('profiles.id')),
-    Column('notification_id', Integer, ForeignKey('notifications.id'))
-)
+class NotificationRecipient(Base):
+    __tablename__ = 'notifications_recipients_association'
+    profile_id = Column(Integer, ForeignKey('profiles.id'), primary_key=True)
+    notification_id = Column(Integer, ForeignKey('notifications.id'), primary_key=True)
+    read = Column(Boolean, default=False)
 
+    notification = relationship('Notification', back_populates='notification_recipients')
+    recipient = relationship('Profile', back_populates='notifications')
 
 class Notification(Base):
     __tablename__ = 'notifications'
@@ -159,7 +163,7 @@ class Notification(Base):
     content = Column(String(200))
     date_sent = Column(DateTime)
 
-    recipients = relationship('Profile', secondary=notifiactions_recipients, back_populates='notifications')
+    notification_recipients = relationship('NotificationRecipient', back_populates='notification')
 
 
 favourites = Table('favourites', Base.metadata,

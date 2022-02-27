@@ -400,10 +400,13 @@ def create_notification(db: Session, notification: schemas.NotificationIn):
 
     for id in notification.recipients:
         recipient = db.query(models.Profile).filter(
-            models.Profile.id == id).first()
+            models.Profile.id == id).one_or_none()
 
         if recipient is not None:
-            notification_obj.recipients.append(recipient)
+            association = models.NotificationRecipient()
+            association.recipient = recipient
+
+            notification_obj.notification_recipients.append(association)
 
     db.add(notification_obj)
     db.commit()
@@ -411,20 +414,27 @@ def create_notification(db: Session, notification: schemas.NotificationIn):
     return notification_obj
 
 
-def query_notifications_by_recipient(db: Session, sorts: schemas.NotificationSorts, pagination: schemas.Pagination,  profile_id: int):
+def filter_notifications_by_recipient(db: Session, sorts: schemas.NotificationSorts, filters: schemas.NotificationFilters, pagination: schemas.Pagination,  profile_id: int):
     notifications = db.query(models.Notification).filter(
-        models.Notification.recipients.contains(profile_id)).all()
+        models.Notification.notification_recipients.any(models.NotificationRecipient.profile_id == profile_id))
     
+    notifications = filter_from_schema(notifications, filters)
     notifications = sort_from_schema(notifications, sorts)
-    
+    count = notifications.count()
+    notifications = paginate(notifications, pagination)   
 
-    return notifications
+    return notifications.all(), count
 
-def filter_authored_notifications(db: Session, profile: models.Profile, sorts: schemas.NotificationSorts):
+def filter_authored_notifications(db: Session, sorts: schemas.NotificationSorts, filters: schemas.NotificationFilters, pagination: schemas.Pagination,  profile: models.Profile):
     notifications = db.query(models.Notification).filter(
         models.Notification.author == profile)
+
     notifications = sort_from_schema(notifications, sorts)
-    return notifications.all()
+    notifications = filter_from_schema(notifications, filters)
+    count = notifications.count()
+    notifications = paginate(notifications, pagination)
+
+    return notifications.all(), count
 
 
 def read_notification_by_id(db: Session, id: int):
