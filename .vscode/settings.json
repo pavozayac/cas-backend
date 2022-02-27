@@ -1,3 +1,13 @@
 {
-    "python.pythonPath": ".env\\Scripts\\python.exe"
+    "python.pythonPath": ".env\\Scripts\\python.exe",
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "Mock",
+            "group": "MyGroup",
+            "database": "./sql_app.db"
+        }
+    ],
+    "sqltools.useNodeRuntime": true
 }

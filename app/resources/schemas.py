@@ -81,6 +81,7 @@ class Profile(ProfileBase):
     # post_visibility: int
     avatar: Optional[Avatar]
     reflections_count: int
+    is_admin: bool
 
     class Config:
         orm_mode = True
@@ -92,6 +93,7 @@ class ProfileFilters(BaseModel):
     last_online_lte: Optional[date]
     date_joined_gte: Optional[date]
     date_joined_lte: Optional[date]
+    full_text_con: Optional[str]
 
     class Meta:
         source = models.Profile
@@ -234,6 +236,7 @@ class GroupFilters(BaseModel):
     name: Optional[str]
     date_created_gte: Optional[date]
     date_created_lte: Optional[date]
+    full_text_con: Optional[str]
 
     class Meta:
         source = models.Group

@@ -13,13 +13,13 @@ router = APIRouter()
 
 #Testing route
 @router.post('', response_model=schemas.Notification)
-async def post_notification(notification: schemas.NotificationIn, db: Session = Depends(Database), coordinator: models.Profile = Depends(LoginAuth)):
-    if not coordinator.is_admin and not coordinator.is_moderator:
-        for id in notification.recipients:
-            recipient = crud.read_profile_by_id(db, id)           
+async def post_notification(notification: schemas.NotificationIn, db: Session = Depends(Database), admin: models.Profile = Depends(AdminAuth)):
+    # if not coordinator.is_admin and not coordinator.is_moderator:
+    #     for id in notification.recipients:
+    #         recipient = crud.read_profile_by_id(db, id)           
 
-            if recipient.group.coordinator.id != coordinator.id:
-                raise HTTPException(HTTP_401_UNAUTHORIZED, 'Invalid recipients')
+    #         if recipient.group.coordinator.id != coordinator.id:
+    #             raise HTTPException(HTTP_401_UNAUTHORIZED, 'Invalid recipients')
 
     return crud.create_notification(db, notification)
 

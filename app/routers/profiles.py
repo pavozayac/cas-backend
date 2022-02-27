@@ -19,9 +19,11 @@ router = APIRouter()
 #   Advanced queries for profiles
 #
 
-@router.post('/query', response_model=List[schemas.BulkProfile])
-def search_profiles(filters: schemas.ProfileFilters, sorts: schemas.ProfileSorts, db: Session = Depends(Database), pagination: Optional[schemas.Pagination] = None):
-    return crud.filter_profiles(db, pagination, filters, sorts)
+@router.post('/query', response_model=schemas.BulkProfileResponse)
+def search_profiles(filters: schemas.ProfileFilters, sorts: schemas.ProfileSorts, db: Session = Depends(Database), pagination: Optional[schemas.Pagination] = None, profile: models.Profile = Depends(LoginAuth)):
+    profiles, count = crud.filter_profiles(db, pagination, filters, sorts)
+    
+    return schemas.BulkProfileResponse(items=profiles, count=count)
 
 #
 #   CRUD actions for profiles

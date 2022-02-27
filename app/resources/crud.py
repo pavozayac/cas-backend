@@ -79,9 +79,10 @@ def filter_profiles(db: Session, pagination: schemas.Pagination, filters: schema
     search = db.query(models.Profile)
     search = filter_from_schema(search, filters)
     search = sort_from_schema(search, sorts)
+    count = search.count()
     search = paginate(search, pagination)
 
-    return search.all()
+    return search.all(), count
 
 
 def update_profile(db: Session, instance: models.Profile, schema: schemas.ProfileIn):
@@ -250,9 +251,10 @@ def filter_groups(db: Session, pagination: schemas.Pagination, filters: schemas.
     groups = db.query(models.Group)
     groups = filter_from_schema(groups, filters)
     groups = sort_from_schema(groups, sorts)
+    count = groups.count()
     groups = paginate(groups, pagination)
 
-    return groups.all()
+    return groups.all(), count
 
 
 def update_group(db: Session, instance: models.Group, group: schemas.GroupIn):

@@ -18,9 +18,11 @@ router = APIRouter()
 #   Advanced queries for groups
 #
 
-@router.post('/query', response_model=List[schemas.BulkGroup])
-async def filter_groups(filters: schemas.GroupFilters, sorts: schemas.GroupSorts, db: Session = Depends(Database), pagination: Optional[schemas.Pagination] = None):
-    return crud.filter_groups(db, pagination, filters, sorts)
+@router.post('/query', response_model=schemas.BulkGroupResponse)
+async def filter_groups(filters: schemas.GroupFilters, sorts: schemas.GroupSorts, db: Session = Depends(Database), pagination: Optional[schemas.Pagination] = None, profile: models.Profile = Depends(LoginAuth)):
+    groups, count = crud.filter_groups(db, pagination, filters, sorts)
+
+    return schemas.BulkGroupResponse(items=groups, count=count)
 
 #
 #   CRUD for groups

@@ -47,6 +47,10 @@ class Profile(Base):
     def reflections_count(self):
         return len(self.reflections)
 
+    @hybrid_property
+    def full_text(self):
+        return self.first_name + ' ' + self.last_name
+
 #   This model will be used for profile pictures
 class ProfileAvatar(Base):
     __tablename__ = 'profile_avatars'
@@ -121,6 +125,10 @@ class Group(Base):
         for member in self.members:
             sum += member.reflections_count
         return sum
+
+    @hybrid_property
+    def full_text(self):
+        return self.name + ' ' + str(self.graduation_year)
 #   This model will be used for profile pictures
 class GroupAvatar(Base):
     __tablename__ = 'group_avatars'

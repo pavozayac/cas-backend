@@ -155,7 +155,10 @@ def paginate(query: Query, schema: BaseModel):
         }
 
         if cleaned.get('page') is not None and cleaned.get('limit') is not None:
-            query = query.limit(cleaned['limit']).offset(cleaned['limit']*cleaned['page'])
+            if cleaned['limit'] == 0:
+                return query
+            else: 
+                query = query.limit(cleaned['limit']).offset(cleaned['limit']*cleaned['page'])
 
     return query
 
