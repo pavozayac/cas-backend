@@ -1,3 +1,4 @@
+from h11 import Data
 from starlette.status import HTTP_401_UNAUTHORIZED
 from ..database import Database
 from .auth import AdminAuth, LoginAuth
@@ -32,6 +33,12 @@ async def filter_received_notifications(sorts: schemas.NotificationSorts, filter
 async def filter_posted_notifications(sorts: schemas.NotificationSorts, filters: schemas.NotificationFilters, db: Session = Depends(Database), profile: models.Profile = Depends(AdminAuth), pagination: Optional[schemas.Pagination] = None):
     notifications, count = crud.filter_authored_notifications(db, sorts, filters, pagination, profile.id)
     return schemas.BulkNotificationResponse(items=notifications, count=count)
+
+@router.get('/{id}', response_model=schemas.Notification)
+async def get_notification(id: int, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+    notification = crud.read_notification_by_id(db, id)
+
+    return notification
     
 
 @router.delete('/{id}')
