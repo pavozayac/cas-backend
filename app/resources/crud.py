@@ -1,3 +1,5 @@
+from secrets import token_urlsafe
+from sqlalchemy.exc import IntegrityError
 import time
 import sqlalchemy
 from sqlalchemy.orm import Session, query
@@ -17,6 +19,7 @@ import os
 #
 #   Profile CRUD
 #
+
 
 def create_profile(db: Session, profile: schemas.ProfileIn):
     profile_obj = models.Profile(
@@ -109,6 +112,7 @@ def delete_profile(db: Session, instance: models.Profile):
 
 password_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
+
 def create_basic_login(db: Session, profile_id: int, basic_login: schemas.BasicLoginIn):
     if read_basic_login_by_email(db, basic_login.email) is not None:
         raise HTTPException(status.HTTP_409_CONFLICT,
@@ -131,16 +135,18 @@ def create_basic_login(db: Session, profile_id: int, basic_login: schemas.BasicL
 def read_basic_login_by_email(db: Session, email: str):
     return db.query(models.BasicLogin).filter(models.BasicLogin.email == email).first()
 
+
 def read_basic_login_by_profile(db: Session, profile_id: int):
     return db.query(models.BasicLogin).filter(models.BasicLogin.profile_id == profile_id).one()
 
+
 def update_basic_login(db: Session, basic_login: models.BasicLogin, basic_login_in: schemas.BasicLoginIn):
     basic_login.password = password_context.hash(basic_login_in.password)
-    
+
     db.commit()
     db.refresh(basic_login)
     return basic_login
-    
+
 
 #
 #   ForeignLogin CRUD
@@ -176,7 +182,6 @@ def read_foreign_login(db: Session, foreign_id: str):
 #   Confirmation/recovery hybrid code CRUD
 #
 
-from sqlalchemy.exc import IntegrityError
 
 def create_confirmation_code(db: Session, code: str, profile_id: int):
     confirmation_code = models.ConfirmationCode(
@@ -185,12 +190,14 @@ def create_confirmation_code(db: Session, code: str, profile_id: int):
         date_created=datetime.now()
     )
     try:
-        check_code = db.query(models.ConfirmationCode).filter(models.ConfirmationCode.profile_id == profile_id).one()
+        check_code = db.query(models.ConfirmationCode).filter(
+            models.ConfirmationCode.profile_id == profile_id).one()
         if check_code.date_created < datetime.now()-timedelta(minutes=15):
             db.delete(check_code)
             db.commit()
         else:
-            raise HTTPException(HTTP_409_CONFLICT, 'Recovery email has already been sent, try again in 15 minutes')
+            raise HTTPException(
+                HTTP_409_CONFLICT, 'Recovery email has already been sent, try again in 15 minutes')
     except NoResultFound:
         pass
 
@@ -199,7 +206,8 @@ def create_confirmation_code(db: Session, code: str, profile_id: int):
         db.commit()
         db.refresh(confirmation_code)
     except IntegrityError:
-        raise HTTPException(HTTP_409_CONFLICT, 'Recovery email has already been sent.')
+        raise HTTPException(HTTP_409_CONFLICT,
+                            'Recovery email has already been sent.')
     return confirmation_code
 
 
@@ -221,10 +229,10 @@ def delete_confirmation_code(db: Session, confirmation_code: models.Confirmation
 #   Group CRUD
 #
 
-from secrets import token_urlsafe
 
 def create_group(db: Session, group: schemas.GroupIn, coordinator_id: int):
-    coordinator = db.query(models.Profile).filter(models.Profile.id == coordinator_id).one()
+    coordinator = db.query(models.Profile).filter(
+        models.Profile.id == coordinator_id).one()
 
     new_group = models.Group(
         id=token_urlsafe(8),
@@ -300,7 +308,8 @@ async def create_group_avatar(db: Session, avatar: schemas.AvatarIn, group: mode
 
 
 def read_group_avatar(db: Session, id: str):
-    avatar = db.query(models.GroupAvatar).filter(models.GroupAvatar.id == id).first()
+    avatar = db.query(models.GroupAvatar).filter(
+        models.GroupAvatar.id == id).first()
 
     if avatar is None:
         raise HTTPException(HTTP_404_NOT_FOUND, 'Avatar not found')
@@ -309,10 +318,9 @@ def read_group_avatar(db: Session, id: str):
 
 
 async def update_group_avatar(db: Session, avatar: schemas.AvatarIn, group: models.Group, file: UploadFile):
-    
+
     if group is None:
         raise HTTPException(HTTP_404_NOT_FOUND, 'Group not found')
-
 
     generated_path, attachment_id = await save_generic_attachment(file)
 
@@ -328,11 +336,8 @@ async def update_group_avatar(db: Session, avatar: schemas.AvatarIn, group: mode
         date_added=date.today()
     )
 
-
-
     if group.avatar:
         db.delete(group.avatar)
-
 
     group.avatar = avatar_obj
 
@@ -375,7 +380,7 @@ def create_group_join_request(db: Session, profile_id: int, group_id: int):
         raise HTTPException(HTTP_409_CONFLICT, 'Join request already posted')
     db.refresh(group_join_obj)
     return group_join_obj
-        
+
 
 def read_group_join_request_by_ids(db: Session, group_id: int, profile_id: int):
     return db.query(models.GroupJoinRequest).filter(models.GroupJoinRequest.group_id == group_id and models.GroupJoinRequest.profile_id == profile_id).first()
@@ -394,8 +399,9 @@ def delete_group_join_request(db: Session, instance: models.GroupJoinRequest):
 #
 
 
-def create_notification(db: Session, notification: schemas.NotificationIn):
+def create_notification(db: Session, notification: schemas.NotificationIn, profile: models.Profile):
     notification_obj = models.Notification(
+        profile_id=profile.id,
         content=notification.content,
         date_sent=datetime.now()
     )
@@ -406,9 +412,14 @@ def create_notification(db: Session, notification: schemas.NotificationIn):
 
         if recipient is not None:
             association = models.NotificationRecipient()
+            db.add(association)
             association.recipient = recipient
 
             notification_obj.notification_recipients.append(association)
+
+        else:
+            raise HTTPException(HTTP_404_NOT_FOUND,
+                                f'Recipient with id {id} not found')
 
     db.add(notification_obj)
     db.commit()
@@ -416,36 +427,79 @@ def create_notification(db: Session, notification: schemas.NotificationIn):
     return notification_obj
 
 
-def filter_notifications_by_recipient(db: Session, sorts: schemas.NotificationSorts, filters: schemas.NotificationFilters, pagination: schemas.Pagination,  profile_id: int):
-    notifications = db.query(models.Notification).filter(
-        models.Notification.notification_recipients.any(models.NotificationRecipient.profile_id == profile_id))
-    
-    notifications = filter_from_schema(notifications, filters)
-    notifications = sort_from_schema(notifications, sorts)
-    count = notifications.count()
-    notifications = paginate(notifications, pagination)   
+def filter_notifications_by_recipient(db: Session, sorts: schemas.NotificationSorts, filters: schemas.NotificationFilters, pagination: schemas.Pagination,  profile: models.Profile):
+    notes = db.query(models.Notification)
+    notes = sort_from_schema(notes, sorts)
 
-    return notifications.all(), count
+    if filters.dict().get('read') is not None:
+        notes = notes.filter(
+            models.Notification.notification_recipients.any((models.NotificationRecipient.recipient == profile) & (models.NotificationRecipient.read == filters.read))).distinct()
+    else:
+        notes = notes.filter(
+            models.Notification.notification_recipients.any(models.NotificationRecipient.recipient == profile)).distinct()
 
-def filter_authored_notifications(db: Session, sorts: schemas.NotificationSorts, filters: schemas.NotificationFilters, pagination: schemas.Pagination,  profile: models.Profile):
-    notifications = db.query(models.Notification).filter(
+    if sorts.dict().get('read_omit') is not None:
+        if sorts.read_omit == 'asc':
+            notes = notes.join(models.NotificationRecipient, sqlalchemy.and_(models.NotificationRecipient.profile_id == profile.id,
+                               models.NotificationRecipient.notification_id == models.Notification.id)).order_by(sqlalchemy.asc(models.NotificationRecipient.read))
+        else:
+            notes = notes.join(models.NotificationRecipient, sqlalchemy.and_(models.NotificationRecipient.profile_id == profile.id,
+                    models.NotificationRecipient.notification_id == models.Notification.id)).order_by(sqlalchemy.desc(models.NotificationRecipient.read))
+
+    count = notes.count()
+    read_count = db.query(models.NotificationRecipient).filter(
+        (models.NotificationRecipient.profile_id == profile.id) & (models.NotificationRecipient.read == True)).count()
+    notes = paginate(notes, pagination)
+
+    return notes.distinct().all(), count, read_count
+
+
+def filter_authored_notifications(db: Session, sorts: schemas.NotificationSorts, pagination: schemas.Pagination,  profile: models.Profile):
+    notes = db.query(models.Notification).filter(
         models.Notification.author == profile)
+    notes = sort_from_schema(notes, sorts)
+    count = notes.count()
+    read_count = db.query(models.NotificationRecipient).filter((models.NotificationRecipient.notification.has(
+        models.Notification.profile_id == profile.id)) & (models.NotificationRecipient.read == True)).count()
+    notes = paginate(notes, pagination)
 
-    notifications = sort_from_schema(notifications, sorts)
-    notifications = filter_from_schema(notifications, filters)
-    count = notifications.count()
-    notifications = paginate(notifications, pagination)
-
-    return notifications.all(), count
+    return notes.all(), count, read_count
 
 
-def read_notification_by_id(db: Session, id: int):
+def read_notification_by_id(db: Session, id: int, profile: models.Profile):
     notification = db.query(models.Notification).filter(
-        models.Notification.id == id).first()
+        models.Notification.id == id).one_or_none()
 
     if notification is None:
         raise HTTPException(HTTP_404_NOT_FOUND,
                             'Notification with this id was not found')
+
+    note_recipient = db.query(models.NotificationRecipient).filter(
+        (models.NotificationRecipient.notification_id == notification.id) & (models.NotificationRecipient.profile_id == profile.id)).one_or_none()
+
+    if note_recipient is None or profile.is_admin == False:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED,
+                            'Insufficient permissions')
+
+    notification.read = note_recipient.read
+
+    return notification
+
+
+def read_notification_by_id_no_read(db: Session, id: int, profile: models.Profile):
+    notification = db.query(models.Notification).filter(
+        models.Notification.id == id).one_or_none()
+
+    if notification is None:
+        raise HTTPException(HTTP_404_NOT_FOUND,
+                            'Notification with this id was not found')
+
+    note_recipient = db.query(models.NotificationRecipient).filter(
+        (models.NotificationRecipient.notification_id == notification.id) & (models.NotificationRecipient.profile_id == profile.id)).one_or_none()
+
+    if note_recipient is None and profile.is_admin == False:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED,
+                            'Insufficient permissions')
 
     return notification
 
@@ -471,6 +525,19 @@ def update_notification(db: Session, instance: models.Notification, notfificatio
 def delete_notification(db: Session, instance: models.Notification):
     db.delete(instance)
     db.commit()
+
+
+def toggle_read_notification(db: Session, profile: models.Profile, notification: models.Notification):
+    try:
+        notification_recipient = db.query(models.NotificationRecipient).filter(
+            (models.NotificationRecipient.notification_id == notification.id) & (models.NotificationRecipient.profile_id == profile.id)).one()
+    except NoResultFound:
+        raise HTTPException(HTTP_404_NOT_FOUND, 'Notification not found')
+
+    notification_recipient.read = not notification_recipient.read
+
+    db.commit()
+
 
 #
 #   Profile Avatar CRUD
@@ -502,7 +569,8 @@ async def create_profile_avatar(db: Session, avatar: schemas.AvatarIn, profile: 
 def read_profile_avatar(db: Session, avatar_id: str):
     print(id)
     try:
-        profile_avatar = db.query(models.ProfileAvatar).filter(models.ProfileAvatar.id == avatar_id ).one()
+        profile_avatar = db.query(models.ProfileAvatar).filter(
+            models.ProfileAvatar.id == avatar_id).one()
     except NoResultFound:
         raise HTTPException(HTTP_404_NOT_FOUND, 'Avatar not found')
 
@@ -616,10 +684,10 @@ def filter_favourite_reflections(db: Session, pagination: schemas.Pagination, fi
     query = sort_from_schema(query, sorts)
     query = filter_visibility(query, profile)
 
-    query = query.filter(models.Reflection.favouritees.any(models.Profile.id==profile.id))
+    query = query.filter(models.Reflection.favouritees.any(
+        models.Profile.id == profile.id))
     count = query.count()
 
-    
     query = paginate(query, pagination)
     reflections = query.all()
 
@@ -802,7 +870,7 @@ def filter_reflection_comments(db: Session, reflection_id: int, pagination: sche
     query = paginate(query, pagination)
 
     comments = query.all()
-    
+
     return comments, count
 
 

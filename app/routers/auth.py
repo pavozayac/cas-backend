@@ -81,6 +81,8 @@ def AdminAuth(profile: Profile = Depends(LoginAuth)):
     if not profile.is_admin:
         raise CREDENTIALS_EXCEPTION('Insufficient permissions')
 
+    return profile
+
 
 #
 #   Utility function

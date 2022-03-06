@@ -89,6 +89,8 @@ def filter_from_schema(query: Query, schema: BaseModel):
         elif '_con' in k:
             query = query.filter(
                 getattr(schema.Meta.source, k[:len(k)-4]).contains(v))
+        elif '_omit' in k:
+            continue
         elif isinstance(v, dict):
             cleaned_subquery = {
                 sub_key: sub_value
@@ -125,23 +127,23 @@ def sort_from_schema(query: Query, schema: BaseModel):
     print(cleaned.items())
 
     for k, v in cleaned.items():
-        if v == 'asc':
-            query = query.order_by(asc(getattr(schema.Meta.source, k)))
-        elif v == 'desc':  # v == 'desc' in k:
-            query = query.order_by(desc(getattr(schema.Meta.source, k)))
-        elif isinstance(v, dict):
-            cleaned_subquery = {
-                sub_key: sub_value
-                for sub_key, sub_value in v.items()
-                if sub_value is not None
-            }   
+        if not 'omit' in k:
+            if v == 'asc':
+                query = query.order_by(asc(getattr(schema.Meta.source, k)))
+            elif v == 'desc':  # v == 'desc' in k:
+                query = query.order_by(desc(getattr(schema.Meta.source, k)))
+            elif isinstance(v, dict):
+                cleaned_subquery = {
+                    sub_key: sub_value
+                    for sub_key, sub_value in v.items()
+                    if sub_value is not None
+                }   
 
-            for sub_key, sub_value in cleaned_subquery.items():
-                if sub_value == 'asc':
-                    query = query.join(getattr(schema, k).Meta.source, aliased=True).order_by(asc(getattr(schema, k).Meta.source, sub_key))
-                elif sub_value == 'desc':  # v == 'desc' in k:
-                    query = query.join(getattr(schema, k).Meta.source, aliased=True).order_by(desc(getattr(schema, k).Meta.source, sub_key))
-
+                for sub_key, sub_value in cleaned_subquery.items():
+                    if sub_value == 'asc':
+                        query = query.join(getattr(schema, k).Meta.source, aliased=True).order_by(asc(getattr(schema, k).Meta.source, sub_key))
+                    elif sub_value == 'desc':  # v == 'desc' in k:
+                        query = query.join(getattr(schema, k).Meta.source, aliased=True).order_by(desc(getattr(schema, k).Meta.source, sub_key))
 
     return query
 

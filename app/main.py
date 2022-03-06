@@ -47,8 +47,8 @@ api.include_router(
 
 api.include_router(
     notifications.router,
-    prefix='/post-notifications',
-    tags=['post_notifications']
+    prefix='/notifications',
+    tags=['notifications']
 )
 
 api.include_router(

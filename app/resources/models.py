@@ -26,8 +26,8 @@ class Profile(Base):
 
     group_requests = relationship('GroupJoinRequest', back_populates='profile')
 
-    notifications = relationship('NotificationRecipient', back_populates='recipient')
-    notifications_authored = relationship('Notification', back_populates='author')
+    notifications = relationship('NotificationRecipient', back_populates='recipient', cascade='delete')
+    notifications_authored = relationship('Notification', back_populates='author', cascade='delete')
 
     reflections = relationship('Reflection', back_populates='author')
 
@@ -171,7 +171,7 @@ class Notification(Base):
     content = Column(String(200))
     date_sent = Column(DateTime)
 
-    notification_recipients = relationship('NotificationRecipient', back_populates='notification')
+    notification_recipients = relationship('NotificationRecipient', back_populates='notification', cascade='delete')
 
 
 favourites = Table('favourites', Base.metadata,
