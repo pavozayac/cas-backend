@@ -41,7 +41,6 @@ for db in Database():
     profile_obj = models.Profile(
         first_name=first_name,
         last_name=last_name,
-        is_moderator=True,
         is_admin=True,
         date_joined=date.today(),
         last_online=date.today()
@@ -55,8 +54,8 @@ for db in Database():
         profile_id=profile_obj.id,
         email=email,
         password=password_context.hash(password),
-        verification_sent=False,
-        verified=False
+        verification_sent=True,
+        verified=True
     )
 
     db.add(basic_obj)

@@ -66,16 +66,17 @@ def decode_token(token: str, db: Session):
 
 
 def LoginAuth(casportal_token: str = Cookie(None), db: Session = Depends(Database)):
-    print(casportal_token)
     profile = decode_token(casportal_token, db)
 
+    basic_login = crud.read_basic_login_by_profile(db, profile.id)
+
+    if not basic_login.verified:
+        if basic_login.verification_sent:
+            raise CREDENTIALS_EXCEPTION('The verification has already been sent.')
+        else:
+            raise CREDENTIALS_EXCEPTION('The verification could not be sent, please try to create anonther account.')
+
     return profile
-
-
-def ModeratorAuth(profile: Profile = Depends(LoginAuth)):
-    if not profile.is_moderator and not profile.is_admin:
-        raise CREDENTIALS_EXCEPTION('Insufficient permissions')
-
 
 def AdminAuth(profile: Profile = Depends(LoginAuth)):
     if not profile.is_admin:
@@ -196,6 +197,12 @@ async def login(response: Response, login: schemas.BasicLoginSignIn, db: Session
 
     if basic is None:
         raise CREDENTIALS_EXCEPTION()
+
+    if not basic.verified:
+        if basic.verification_sent:
+            raise CREDENTIALS_EXCEPTION('The verification has already been sent.')
+        else:
+            raise CREDENTIALS_EXCEPTION('The verification could not be sent, please try to create anonther account.')
 
     if password_context.verify(login.password, basic.password):
         token = create_token({

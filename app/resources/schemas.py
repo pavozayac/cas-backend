@@ -5,6 +5,18 @@ from pydantic import BaseModel, Field, EmailStr, validator, ValidationError, roo
 from datetime import date, datetime
 from ..resources import models
 
+# 
+#   Group sorts moved here to be used by ProfileSorts
+# 
+
+class GroupSorts(BaseModel):
+    date_created: Optional[str]
+    name: Optional[str]
+    graduation_year: Optional[str]
+
+    class Meta:
+        source = models.Group
+
 #
 #   Pagination
 #
@@ -56,8 +68,8 @@ class Avatar(AvatarBase):
 #
 
 class ProfileBase(BaseModel):
-    first_name: str
-    last_name: str
+    first_name: str = Field(max_length=100)
+    last_name: str = Field(max_length=100)
     # post_visibility: int
 
 class ProfileIn(ProfileBase):
@@ -81,6 +93,7 @@ class Profile(ProfileBase):
     # post_visibility: int
     avatar: Optional[Avatar]
     reflections_count: int
+    graduation_year: Optional[int]
     is_admin: bool
 
     class Config:
@@ -102,6 +115,7 @@ class ProfileSorts(BaseModel):
     date_joined: Optional[str]
     last_online: Optional[str]
     first_name: Optional[str]
+    graduation_year: Optional[str]
 
     class Meta:
         source = models.Profile
@@ -123,8 +137,15 @@ class BulkProfileResponse(BaseModel):
 class BasicLoginBase(BaseModel):
     email: EmailStr
 
+    @validator('email')
+    def email_length(cls, v):
+        if len(v) > 100:
+            raise ValidationError('Email cannot be longer than 100 characters.')
+
+        return v
+
 class BasicLoginIn(BasicLoginBase):
-    password: str
+    password: str = Field(..., max_length=100)
 
     @validator('password')
     def password_validator(cls, value: str):
@@ -169,7 +190,15 @@ class RegisterIn(ProfileIn,  BasicLoginIn):
 #
 
 class SendRecoveryMailSchema(BaseModel):
-    email: str
+    email: EmailStr
+
+    @validator('email')
+    def email_length(cls, v):
+        if len(v) > 100:
+            raise ValidationError('Email cannot be longer than 100 characters.')
+
+        return v
+
 
 #
 #   ForeignLogin schemas
@@ -203,9 +232,9 @@ class Token(BaseModel):
 #
 
 class GroupBase(BaseModel):
-    name: str
-    description: str
-    graduation_year: int
+    name: str = Field(..., max_length=255)
+    description: str = Field(..., max_length=1000)
+    graduation_year: int = Field(lt=date.today().year+3, gt=date.today().year-1)
 
 class GroupIn(GroupBase):
     pass
@@ -241,12 +270,6 @@ class GroupFilters(BaseModel):
     class Meta:
         source = models.Group
 
-class GroupSorts(BaseModel):
-    date_created: Optional[str]
-    name: Optional[str]
-
-    class Meta:
-        source = models.Group
 
 #
 #   GroupJoinRequests
@@ -272,7 +295,7 @@ class GroupJoinRequest(BaseModel):
 #
 
 class NotificationBase(BaseModel):
-    content: str
+    content: str = Field(..., max_length=200)
 
 class NotificationIn(NotificationBase):
     recipients: List[int]
@@ -353,7 +376,7 @@ class TagSorts(BaseModel):
 #
 
 class CommentBase(BaseModel):
-    content: str
+    content: str = Field(..., max_length=200)
 
 class CommentIn(CommentBase):
     pass
@@ -389,8 +412,8 @@ class CommentSorts(BaseModel):
 #
 
 class ReflectionBase(BaseModel):
-    title: str
-    text_content: str
+    title: str = Field(..., max_length=100)
+    text_content: str = Field(..., max_length=5000)
     creativity: bool
     activity: bool
     service: bool
@@ -419,7 +442,6 @@ class ReflectionIn(ReflectionBase):
 class Reflection(ReflectionBase):
     id: int
     profile_id: int
-    slug: str
     date_added: date
     is_favourite: bool
     comments: List[BulkComment]

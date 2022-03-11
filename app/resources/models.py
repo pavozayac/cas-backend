@@ -1,11 +1,14 @@
 from datetime import datetime
 from ntpath import realpath
-from sqlalchemy import Column, ForeignKey, String, Boolean, Date, Integer, Enum, DateTime, Table, Text, Unicode, event, JSON, VARCHAR
+from sqlalchemy import Column, ForeignKey, String, Boolean, Date, Integer, Enum, DateTime, Table, Text, Unicode, event, JSON, VARCHAR, type_coerce
+import sqlalchemy
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.hybrid import hybrid_property
 from os import remove as remove_file
 
 from sqlalchemy.sql.functions import func
+from sqlalchemy.ext.associationproxy import association_proxy
+
 from ..database import Base
 
 
@@ -18,30 +21,29 @@ class Profile(Base):
     date_joined = Column(Date)
     # 0 = only coordinator, 1 = only group, 2 = every logged in user, validation is provided in schemas
     last_online = Column(Date)
-    is_moderator = Column(Boolean, default=False)
+    # is_moderator = Column(Boolean, default=False)
     is_admin = Column(Boolean, default=False)
 
     group_id = Column(String(10), ForeignKey('groups.id'), nullable=True)
     group = relationship('Group', back_populates='members', foreign_keys=[group_id])
-
     group_requests = relationship('GroupJoinRequest', back_populates='profile')
 
-    notifications = relationship('NotificationRecipient', back_populates='recipient', cascade='delete')
-    notifications_authored = relationship('Notification', back_populates='author', cascade='delete')
+    notifications = relationship('NotificationRecipient', back_populates='recipient', cascade='all,delete')
+    notifications_authored = relationship('Notification', back_populates='author', cascade='all,delete')
 
-    reflections = relationship('Reflection', back_populates='author')
+    reflections = relationship('Reflection', back_populates='author', cascade='delete')
 
-    comments = relationship('Comment', back_populates='author')
+    comments = relationship('Comment', back_populates='author', cascade='all,delete')
 
     favourited = relationship('Reflection', secondary='favourites', back_populates='favouritees')
 
-    basic_login = relationship('BasicLogin', back_populates='profile', cascade='all, delete')
+    basic_login = relationship('BasicLogin', back_populates='profile', cascade='all,delete')
 
     avatar_id = Column(Integer, ForeignKey('profile_avatars.id'), nullable=True, default=None)
-    avatar = relationship('ProfileAvatar', backref=backref('profile', uselist=False), cascade='all, delete')
+    avatar = relationship('ProfileAvatar', backref=backref('profile', uselist=False), cascade='all,delete')
 
-    sent_messages = relationship('Message', back_populates='sender', foreign_keys='[Message.sender_id]')
-    received_messages = relationship('Message', back_populates='receiver', foreign_keys='[Message.receiver_id]')
+    # sent_messages = relationship('Message', back_populates='sender', foreign_keys='[Message.sender_id]')
+    # received_messages = relationship('Message', back_populates='receiver', foreign_keys='[Message.receiver_id]')
 
     @hybrid_property
     def reflections_count(self):
@@ -49,7 +51,22 @@ class Profile(Base):
 
     @hybrid_property
     def full_text(self):
-        return self.first_name + ' ' + self.last_name
+        return self.first_name + ' ' + self.last_name + ' ' 
+
+    @hybrid_property
+    def graduation_year(self):
+        if self.group:
+            return self.group.graduation_year
+        else:
+            return None
+
+    @graduation_year.expression
+    def graduation_year(cls):
+        return (
+            sqlalchemy.select(Group.graduation_year)
+            .where(Group.id == cls.group_id)
+            .label('graduation_year')
+        )
 
 #   This model will be used for profile pictures
 class ProfileAvatar(Base):
@@ -67,7 +84,7 @@ class BasicLogin(Base):
     profile_id = Column(Integer, ForeignKey(Profile.id), primary_key=True)
 
     email = Column(String(100), unique=True)
-    password = Column(String)
+    password = Column(String(100))
     verification_sent = Column(Boolean)
     verified = Column(Boolean)
 
@@ -101,16 +118,16 @@ class Group(Base):
     id = Column(String(10), primary_key=True)
 
     coordinator_id = Column(Integer, ForeignKey('profiles.id'))
-    coordinator = relationship('Profile', backref=backref('owned_group', uselist=False), foreign_keys=[coordinator_id])
+    coordinator = relationship('Profile', backref=backref('coordinated_groups', uselist=True,), foreign_keys=[coordinator_id])
 
     members = relationship('Profile', back_populates='group', foreign_keys=[Profile.group_id])
 
-    group_requests = relationship('GroupJoinRequest', back_populates='group')
+    group_requests = relationship('GroupJoinRequest', back_populates='group', cascade='all, delete')
 
     avatar_id = Column(VARCHAR(50), ForeignKey('group_avatars.id'), nullable=True)
     avatar = relationship('GroupAvatar', backref=backref('group', uselist=False), cascade='all, delete')
 
-    name = Column(String)
+    name = Column(String(255))
     description = Column(String)
     graduation_year = Column(Integer)
     date_created = Column(Date)
@@ -127,8 +144,18 @@ class Group(Base):
         return sum
 
     @hybrid_property
+    def graduation_year_string(self):
+        return str(self.graduation_year)
+
+    @graduation_year_string.expression
+    def graduation_year_string(cls):
+        return type_coerce(cls.graduation_year, String)
+
+    @hybrid_property
     def full_text(self):
-        return self.name + ' ' + str(self.graduation_year)
+        return self.name + ' ' + self.graduation_year_string
+        # return self.name + ' ' + str(self.graduation_year)
+
 #   This model will be used for profile pictures
 class GroupAvatar(Base):
     __tablename__ = 'group_avatars'
@@ -171,7 +198,7 @@ class Notification(Base):
     content = Column(String(200))
     date_sent = Column(DateTime)
 
-    notification_recipients = relationship('NotificationRecipient', back_populates='notification', cascade='delete')
+    notification_recipients = relationship('NotificationRecipient', back_populates='notification', cascade='all, delete')
 
 
 favourites = Table('favourites', Base.metadata,
@@ -206,8 +233,7 @@ class Reflection(Base):
     author = relationship('Profile', back_populates='reflections')
 
     title = Column(String(100))
-    text_content = Column(Text)
-    slug = Column(String(255), unique=True)
+    text_content = Column(Text(5000))
     date_added = Column(DateTime)
     creativity = Column(Boolean)
     activity = Column(Boolean)
@@ -216,13 +242,13 @@ class Reflection(Base):
     post_visibility = Column(Integer, default=0)
 
 
-    attachments = relationship('Attachment', back_populates='reflection')
+    attachments = relationship('Attachment', back_populates='reflection', cascade='all, delete')
 
     comments = relationship('Comment', back_populates='reflection', cascade='all, delete')
 
     favouritees = relationship('Profile', secondary=favourites, back_populates='favourited')
 
-    reports = relationship('ReflectionReport', back_populates='reflection')
+    # reports = relationship('ReflectionReport', back_populates='reflection')
 
     tags = relationship('Tag', secondary=tags_reflections, back_populates='reflections')
 
@@ -235,7 +261,7 @@ class Tag(Base):
 
     id = Column(Integer, primary_key=True)
 
-    name = Column(String(50))
+    name = Column(String(30))
     date_added = Column(Date)
 
     reflections = relationship('Reflection', secondary=tags_reflections, back_populates='tags')
@@ -254,45 +280,45 @@ class Comment(Base):
     content = Column(String(200))
     date_added = Column(DateTime)
 
-    reports = relationship('CommentReport', back_populates='comment')
+    # reports = relationship('CommentReport', back_populates='comment')
 
 
-class ReflectionReport(Base):
-    __tablename__ = 'reflection_reports'
+# class ReflectionReport(Base):
+#     __tablename__ = 'reflection_reports'
 
-    id = Column(Integer, primary_key=True)
+#     id = Column(Integer, primary_key=True)
 
-    reflection_id = Column(Integer, ForeignKey('reflections.id'))
-    reflection = relationship('Reflection', back_populates='reports')
+#     reflection_id = Column(Integer, ForeignKey('reflections.id'))
+#     reflection = relationship('Reflection', back_populates='reports')
 
-    reason = Column(Text)
-    date_added = Column(Date)
+#     reason = Column(Text)
+#     date_added = Column(Date)
 
-class CommentReport(Base):
-    __tablename__ = 'comment_reports'
+# class CommentReport(Base):
+#     __tablename__ = 'comment_reports'
 
-    id = Column(Integer, primary_key=True)
+#     id = Column(Integer, primary_key=True)
 
-    comment_id = Column(Integer, ForeignKey('comments.id'))
-    comment = relationship('Comment', back_populates='reports')
+#     comment_id = Column(Integer, ForeignKey('comments.id'))
+#     comment = relationship('Comment', back_populates='reports')
 
-    reason = Column(Text)
-    date_added = Column(Date)
+#     reason = Column(Text)
+#     date_added = Column(Date)
 
-class Message(Base):
-    __tablename__ = 'messages'
+# class Message(Base):
+#     __tablename__ = 'messages'
 
-    id = Column(Integer, primary_key=True)
+#     id = Column(Integer, primary_key=True)
 
-    sender_id = Column(Integer, ForeignKey('profiles.id'))
-    sender = relationship(Profile, back_populates='sent_messages', foreign_keys=[sender_id])
+#     sender_id = Column(Integer, ForeignKey('profiles.id'))
+#     sender = relationship(Profile, back_populates='sent_messages', foreign_keys=[sender_id])
 
-    receiver_id = Column(Integer, ForeignKey('profiles.id'))
-    receiver = relationship(Profile, back_populates='received_messages', foreign_keys=[receiver_id])
+#     receiver_id = Column(Integer, ForeignKey('profiles.id'))
+#     receiver = relationship(Profile, back_populates='received_messages', foreign_keys=[receiver_id])
 
-    content = Column(Text(300))
+#     content = Column(Text(300))
 
-    datetime_sent = Column(DateTime, default=datetime.now())
+#     datetime_sent = Column(DateTime, default=datetime.now())
 
 
 

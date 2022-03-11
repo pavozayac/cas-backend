@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .resources import models, crud, schemas
 
-from .routers import auth, profiles, notifications, groups, reflections, tags, messages
+from .routers import auth, profiles, notifications, groups, reflections, tags
 
 api = FastAPI()
 

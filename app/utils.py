@@ -27,7 +27,7 @@ def CREDENTIALS_EXCEPTION(detail='Invalid credentials'):
 
 
 def check_object_ownership(object, profile: models.Profile, field: str = 'profile_id'):
-    if getattr(object, field) != profile.id and not profile.is_moderator and not profile.is_admin:
+    if getattr(object, field) != profile.id and not profile.is_admin:
         raise CREDENTIALS_EXCEPTION('Invalid ownership')
 
 
@@ -141,9 +141,9 @@ def sort_from_schema(query: Query, schema: BaseModel):
 
                 for sub_key, sub_value in cleaned_subquery.items():
                     if sub_value == 'asc':
-                        query = query.join(getattr(schema, k).Meta.source, aliased=True).order_by(asc(getattr(schema, k).Meta.source, sub_key))
+                        query = query.join(getattr(schema, k).Meta.source, aliased=True).order_by(asc(getattr(getattr(schema, k).Meta.source, sub_key)))
                     elif sub_value == 'desc':  # v == 'desc' in k:
-                        query = query.join(getattr(schema, k).Meta.source, aliased=True).order_by(desc(getattr(schema, k).Meta.source, sub_key))
+                        query = query.join(getattr(schema, k).Meta.source, aliased=True).order_by(desc(getattr(getattr(schema, k).Meta.source, sub_key)))
 
     return query
 

@@ -8,7 +8,7 @@ from ..resources import crud, schemas, models
 from fastapi import APIRouter, Depends, Form
 from typing import List, Optional
 from sqlalchemy.orm.session import Session
-from .auth import LoginAuth
+from .auth import AdminAuth, LoginAuth
 from ..database import Database
 from ..resources.models import Profile, ProfileAvatar
 from fastapi.responses import FileResponse
@@ -38,7 +38,7 @@ def get_profiles(db: Session = Depends(Database)):
 async def get_current_logged_in_profile(profile: Profile = Depends(LoginAuth)):
     return profile
 
-@router.get('/id/{id}', response_model=schemas.Profile)
+@router.get('/{id}', response_model=schemas.Profile)
 async def get_profile(id: int, db: Session = Depends(Database)):
     return crud.read_profile_by_id(db, id)
 
@@ -65,6 +65,15 @@ async def leave_current_group(profile: Profile = Depends(LoginAuth), db: Session
 
 @router.delete('/current')
 async def delete_current_profile(profile: Profile = Depends(LoginAuth), db: Session = Depends(Database)):
+    crud.delete_profile(db, profile)
+
+    return {
+        'detail': 'Successfully deleted profile'
+    }
+
+@router.delete('/{id}')
+async def delete_profile(id: int, admin: Profile = Depends(AdminAuth), db: Session = Depends(Database)):
+    profile = crud.read_profile_by_id(db, id)
     crud.delete_profile(db, profile)
 
     return {

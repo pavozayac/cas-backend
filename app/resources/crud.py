@@ -245,7 +245,6 @@ def create_group(db: Session, group: schemas.GroupIn, coordinator_id: int):
     db.commit()
     db.refresh(new_group)
 
-    coordinator.group = new_group
     db.commit()
 
     return new_group
@@ -259,7 +258,7 @@ def filter_groups(db: Session, pagination: schemas.Pagination, filters: schemas.
     groups = db.query(models.Group)
     groups = filter_from_schema(groups, filters)
     groups = sort_from_schema(groups, sorts)
-    count = groups.count()
+    count = groups.distinct().count()
     groups = paginate(groups, pagination)
 
     return groups.all(), count
@@ -477,7 +476,7 @@ def read_notification_by_id(db: Session, id: int, profile: models.Profile):
     note_recipient = db.query(models.NotificationRecipient).filter(
         (models.NotificationRecipient.notification_id == notification.id) & (models.NotificationRecipient.profile_id == profile.id)).one_or_none()
 
-    if note_recipient is None or profile.is_admin == False:
+    if note_recipient is None and profile.is_admin == False:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED,
                             'Insufficient permissions')
 
@@ -630,7 +629,6 @@ def create_reflection(db: Session, profile_id: int, reflection: schemas.Reflecti
         profile_id=profile_id,
         title=reflection.title,
         text_content=reflection.text_content,
-        slug=reflection.title + str(datetime.now()),
         date_added=datetime.now(),
         post_visibility=reflection.post_visibility,
         creativity=reflection.creativity,
@@ -884,133 +882,4 @@ def update_comment(db: Session, instance: models.Comment, comment: schemas.Comme
 
 def delete_comment(db: Session, instance):
     db.delete(instance)
-    db.commit()
-
-#
-#   ReflectionReport CRUD
-#
-
-
-def create_reflection_report(db: Session, reflection_id: int, report: schemas.ReflectionReportIn):
-    report_obj = models.ReflectionReport(
-        reflection_id=reflection_id,
-        reason=report.reason
-    )
-
-    db.add(report_obj)
-    db.commit()
-    db.refresh(report_obj)
-    return report_obj
-
-
-def filter_reflection_reports(db: Session, sorts: schemas.ReflectionReportSorts):
-    query = sort_from_schema(db.query(models.CommentReport), sorts)
-    return query.all()
-
-
-def read_reflection_report_by_id(db: Session, id: int):
-    report = db.query(models.ReflectionReport).filter(
-        models.ReflectionReport.id == id).one()
-
-    if report is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND,
-                            'Reflection report not found')
-
-    return report
-
-
-def read_reports_by_reflection_id(db: Session, reflection_id: int):
-    reports = db.query(models.ReflectionReport).filter(
-        models.ReflectionReport.reflection_id == reflection_id).all()
-
-    if reports is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND,
-                            'Reflection reports not found')
-
-    return reports
-
-
-def delete_reflection_report(db: Session, report: models.ReflectionReport):
-    db.delete(report)
-    db.commit()
-
-#
-#   CommentReport CRUD
-#
-
-
-def create_comment_report(db: Session, comment_id: int, report: schemas.CommentReportIn):
-    report_obj = models.CommentReport(
-        reflection_id=comment_id,
-        reason=report.reason
-    )
-
-    db.add(report_obj)
-    db.commit()
-    db.refresh(report_obj)
-    return report_obj
-
-
-def filter_comment_reports(db: Session, sorts: schemas.CommentReportSorts):
-    query = sort_from_schema(db.query(models.ReflectionReport), sorts)
-    return query.all()
-
-
-def read_comment_report_by_id(db: Session, id: int):
-    report = db.query(models.CommentReport).filter(
-        models.CommentReport.id == id).one()
-
-    if report is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND,
-                            'Reflection report not found')
-
-    return report
-
-
-def read_reports_by_comment_id(db: Session, comment_id: int):
-    reports = db.query(models.CommentReport).filter(
-        models.CommentReport.comment_id == comment_id).all()
-
-    if reports is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND,
-                            'Reflection reports not found')
-
-    return reports
-
-
-def delete_comment_report(db: Session, report: models.CommentReport):
-    db.delete(report)
-    db.commit()
-
-#
-#   Messages
-#
-
-
-def create_message(db: Session, message: schemas.MessageIn):
-    message_object = models.Message(**message.dict())
-
-    db.add(message_object)
-    db.commit()
-    db.refresh(message_object)
-    return message_object
-
-
-def read_message_by_id(db: Session, id: int):
-    message = db.query(models.Message).filter(models.Message.id == id).one()
-
-    return message
-
-
-def read_message_by_receiver_id(db: Session, receiver_id: int):
-    messages = db.query(models.Message).filter(
-        models.Message.receiver_id == receiver_id).all()
-
-    return messages
-
-
-def delete_message(db: Session, id: int):
-    message = db.query(models.Message).filter(models.Message.id == id).one()
-
-    db.delete(message)
     db.commit()

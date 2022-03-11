@@ -6,7 +6,7 @@ from pydantic.schema import schema
 from sqlalchemy.orm.session import Session
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 from ..resources import crud, schemas, models
-from .auth import LoginAuth
+from .auth import AdminAuth, LoginAuth
 from ..database import Database
 from ..utils import check_object_ownership, sort_from_schema, filter_from_schema
 from typing import List, Optional
@@ -29,10 +29,7 @@ async def filter_groups(filters: schemas.GroupFilters, sorts: schemas.GroupSorts
 #
 
 @router.post('/', response_model=schemas.Group)
-async def add_group(group: schemas.GroupIn, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
-    if profile.group is not None:
-        raise HTTPException(HTTP_409_CONFLICT, 'You are already a coordinator of another group.')
-
+async def add_group(group: schemas.GroupIn, db: Session = Depends(Database), profile: models.Profile = Depends(AdminAuth)):
     return crud.create_group(db, group, profile.id)
 
 @router.get('/{id}', response_model=schemas.Group)
@@ -77,7 +74,7 @@ async def delete_group(id: str, db: Session = Depends(Database), profile: models
 #
 
 @router.get('/{id}/join-requests', response_model=List[schemas.GroupJoinRequest])
-async def get_join_requests(id: str, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+async def get_join_requests(id: str, db: Session = Depends(Database), profile: models.Profile = Depends(AdminAuth)):
     group = crud.read_group_by_id(db, id)
     check_object_ownership(group, profile, 'coordinator_id')
 
@@ -177,10 +174,11 @@ async def get_avatar_by_id(id: str, db: Session = Depends(Database), profile: mo
 
 #     return avatar
 
-@router.put('/avatar/', response_model=schemas.Avatar)
-async def update_group_avatar(file: UploadFile = Form(...), db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+@router.put('/{id}/avatar/', response_model=schemas.Avatar)
+async def update_group_avatar(id: str, file: UploadFile = Form(...), db: Session = Depends(Database), profile: models.Profile = Depends(AdminAuth)):
     avatar_in = schemas.AvatarIn(filename=file.filename)
-    avatar = await crud.update_group_avatar(db, avatar_in, profile.group, file)
+    group = crud.read_group_by_id(db, id)
+    avatar = await crud.update_group_avatar(db, avatar_in, group, file)
 
     return avatar
 
