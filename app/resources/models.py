@@ -38,6 +38,7 @@ class Profile(Base):
     favourited = relationship('Reflection', secondary='favourites', back_populates='favouritees')
 
     basic_login = relationship('BasicLogin', back_populates='profile', cascade='all,delete')
+    foreign_login = relationship('ForeignLogin', back_populates='profile', cascade='all,delete')
 
     avatar_id = Column(VARCHAR(50), ForeignKey('profile_avatars.id'), nullable=True, default=None)
     avatar = relationship('ProfileAvatar', backref=backref('profile', uselist=False), cascade='all,delete')
@@ -51,7 +52,7 @@ class Profile(Base):
 
     @hybrid_property
     def full_text(self):
-        return self.first_name + ' ' + self.last_name + ' ' 
+        return self.first_name + self.last_name
 
     @hybrid_property
     def graduation_year(self):
@@ -101,6 +102,9 @@ class ForeignLogin(Base):
     #   This token is the token retrieved from the provider's OAuth service and includes data requested in scopes
     # Provider = through Google or Facebook
     provider = Column(String)
+
+    profile = relationship('Profile', back_populates='foreign_login')
+
 
 class ConfirmationCode(Base):
     __tablename__ = 'confirmation_codes'

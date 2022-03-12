@@ -98,7 +98,6 @@ async def accept_group_join_request(id: str, profile_id: int, db: Session = Depe
 
     crud.create_notification(db, notification, profile)
 
-    db.add(notification)
     db.delete(request)
     db.commit()
 
@@ -107,12 +106,12 @@ async def accept_group_join_request(id: str, profile_id: int, db: Session = Depe
     }
     
 
-@router.post('/{id}/deny-request/{profile_id}')
-async def accept_group_join_request(group_id: str, profile_id: int, db: Session = Depends(Database), profile: models.Profile = Depends(AdminAuth)):
+@router.post('/requests/{id}/deny-request/{profile_id}')
+async def accept_group_join_request(id: str, profile_id: int, db: Session = Depends(Database), profile: models.Profile = Depends(AdminAuth)):
     group = crud.read_group_by_id(db, id)
     check_object_ownership(group, profile, 'coordinator_id')
     
-    request = crud.read_group_join_request_by_ids(db, group_id, profile_id)
+    request = crud.read_group_join_request_by_ids(db, id, profile_id)
 
     notification = schemas.NotificationIn(
         content=f'Your request to join the group {group.name} has been denied.',
@@ -123,7 +122,6 @@ async def accept_group_join_request(group_id: str, profile_id: int, db: Session 
 
     crud.create_notification(db, notification, profile)
 
-    db.add(notification)
     db.delete(request)
     db.commit()
 
@@ -151,9 +149,11 @@ async def post_join_request(id: str, db: Session = Depends(Database), profile: m
         ]
     )
 
+    request = crud.create_group_join_request(db, profile.id, id)
+
     crud.create_notification(db, notification, profile)
 
-    return crud.create_group_join_request(db, profile.id, id)
+    return request
 
 @router.delete('/{id}/delete-member/{profile_id}')
 async def delete_group_member(id: str, profile_id: int, db: Session = Depends(Database), profile: models.Profile = Depends(AdminAuth)):

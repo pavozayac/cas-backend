@@ -88,7 +88,7 @@ def filter_from_schema(query: Query, schema: BaseModel):
                 getattr(schema.Meta.source, k[:len(k)-4]) >= v)
         elif '_con' in k:
             query = query.filter(
-                getattr(schema.Meta.source, k[:len(k)-4]).contains(v))
+                getattr(schema.Meta.source, k[:len(k)-4]).ilike(f'%{v}%'))
         elif '_omit' in k:
             continue
         elif isinstance(v, dict):
@@ -107,7 +107,7 @@ def filter_from_schema(query: Query, schema: BaseModel):
                         getattr(getattr(schema, k).Meta.source, sub_key[:len(sub_key)-4]) >= sub_value)
                 elif '_con' in sub_key:
                     query = query.join(getattr(schema, k).Meta.source, aliased=True).filter(
-                        getattr(getattr(schema, k).Meta.source, sub_key[:len(sub_key)-4]).contains(sub_value))
+                        getattr(getattr(schema, k).Meta.source, sub_key[:len(sub_key)-4]).ilike(f'%{sub_value}%'))
                 else:
                     query = query.join(getattr(schema, k).Meta.source, aliased=True).filter(
                         getattr(getattr(schema, k).Meta.source, sub_key) == sub_value)
