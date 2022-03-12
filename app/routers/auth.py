@@ -58,23 +58,22 @@ def decode_token(token: str, db: Session):
         raise CREDENTIALS_EXCEPTION('Invalid JWT')
 
     if foreign:
-        profile = crud.read_profile_by_foreign_id(db, sub)
+        return crud.read_profile_by_foreign_id(db, sub), True
     else:
-        profile = crud.read_profile_by_email(db, sub)
-
-    return profile
+        return crud.read_profile_by_email(db, sub), False
 
 
 def LoginAuth(casportal_token: str = Cookie(None), db: Session = Depends(Database)):
-    profile = decode_token(casportal_token, db)
+    profile, is_foreign = decode_token(casportal_token, db)
 
-    basic_login = crud.read_basic_login_by_profile(db, profile.id)
+    if not is_foreign:
+        basic_login = crud.read_basic_login_by_profile(db, profile.id)
 
-    if not basic_login.verified:
-        if basic_login.verification_sent:
-            raise CREDENTIALS_EXCEPTION('The verification has already been sent.')
-        else:
-            raise CREDENTIALS_EXCEPTION('The verification could not be sent, please try to create anonther account.')
+        if not basic_login.verified:
+            if basic_login.verification_sent:
+                raise CREDENTIALS_EXCEPTION('The verification has already been sent.')
+            else:
+                raise CREDENTIALS_EXCEPTION('The verification could not be sent, please try to create anonther account.')
 
     return profile
 
@@ -253,7 +252,7 @@ async def auth_with_google(response: Response, request: Request, db: Session = D
         crud.read_foreign_login(db, data['sub'])
     except HTTPException:
         profile_in = schemas.ProfileIn(first_name=data['given_name'], last_name=data.get(
-            'last_name', ''), post_visibility=0)
+            'last_name', ''))
 
         profile = crud.create_profile(db, profile_in)
         crud.create_foreign_login(
@@ -261,49 +260,6 @@ async def auth_with_google(response: Response, request: Request, db: Session = D
 
     access_token = create_token({
         'sub': data['sub'],
-        'foreign': True
-    })
-
-    response.set_cookie(key='casportal_token',
-                        value=access_token, path='/', httponly=True)
-
-    return {
-        'access_token': access_token,
-        'token_type': 'bearer'
-    }
-
-
-@router.post('/auth/facebook')
-async def auth_with_facebook(response: Response, request: Request, db: Session = Depends(Database)):
-    json = await request.json()
-    print(json)
-
-    token: str = json['signed_request']
-
-    signature, payload = token.split('.')
-
-    decoded_signature = jose_utils.base64url_decode(
-        signature + '=' * (4 - len(signature) % 4))
-    calculated_signature = hmac.HMAC(bytes(getenv(
-        'FACEBOOK_CLIENT_SECRET'), 'utf-8'), bytes(payload, 'utf-8'), hashlib.sha256).digest()
-
-    verified = calculated_signature == decoded_signature
-
-    if not verified:
-        raise HTTPException(401, 'Invalid signature')
-
-    try:
-        crud.read_foreign_login(db, json['id'])
-    except HTTPException:
-        profile_in = schemas.ProfileIn(first_name=json['first_name'], last_name=json.get(
-            'last_name', ''), post_visibility=0)
-
-        profile = crud.create_profile(db, profile_in)
-        crud.create_foreign_login(
-            db, email=json['email'], profile_id=profile.id, foreign_id=json['id'], provider='facebook')
-
-    access_token = create_token({
-        'sub': json['id'],
         'foreign': True
     })
 

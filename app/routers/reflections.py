@@ -53,7 +53,7 @@ async def favourite_reflections(filters: schemas.ReflectionFilters, sorts: schem
 #   CRUD actions for reflections
 #
 
-@router.post('/', response_model=schemas.Reflection)
+@router.post('', response_model=schemas.Reflection)
 async def post_reflection(reflection: schemas.ReflectionIn, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
     return crud.create_reflection(db, profile.id, reflection)
 

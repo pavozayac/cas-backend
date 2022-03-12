@@ -39,7 +39,7 @@ class Profile(Base):
 
     basic_login = relationship('BasicLogin', back_populates='profile', cascade='all,delete')
 
-    avatar_id = Column(Integer, ForeignKey('profile_avatars.id'), nullable=True, default=None)
+    avatar_id = Column(VARCHAR(50), ForeignKey('profile_avatars.id'), nullable=True, default=None)
     avatar = relationship('ProfileAvatar', backref=backref('profile', uselist=False), cascade='all,delete')
 
     # sent_messages = relationship('Message', back_populates='sender', foreign_keys='[Message.sender_id]')
@@ -233,7 +233,7 @@ class Reflection(Base):
     author = relationship('Profile', back_populates='reflections')
 
     title = Column(String(100))
-    text_content = Column(Text(5000))
+    text_content = Column(Text)
     date_added = Column(DateTime)
     creativity = Column(Boolean)
     activity = Column(Boolean)

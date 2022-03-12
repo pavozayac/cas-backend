@@ -28,7 +28,7 @@ async def filter_groups(filters: schemas.GroupFilters, sorts: schemas.GroupSorts
 #   CRUD for groups
 #
 
-@router.post('/', response_model=schemas.Group)
+@router.post('', response_model=schemas.Group)
 async def add_group(group: schemas.GroupIn, db: Session = Depends(Database), profile: models.Profile = Depends(AdminAuth)):
     return crud.create_group(db, group, profile.id)
 
@@ -42,7 +42,7 @@ async def get_group(id: str, db: Session = Depends(Database)):
     return crud.read_group_by_id(db, id)
 
 @router.put('/{id}', response_model=schemas.Group)
-async def put_group(id: str, data: schemas.GroupIn, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+async def put_group(id: str, data: schemas.GroupIn, db: Session = Depends(Database), profile: models.Profile = Depends(AdminAuth)):
     try:
         group = crud.read_group_by_id(db, id)
     except NoResultFound:
@@ -54,7 +54,7 @@ async def put_group(id: str, data: schemas.GroupIn, db: Session = Depends(Databa
 
 
 @router.delete('/{id}')
-async def delete_group(id: str, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+async def delete_group(id: str, db: Session = Depends(Database), profile: models.Profile = Depends(AdminAuth)):
     try:
         group = crud.read_group_by_id(db, id)
     except NoResultFound:
@@ -81,7 +81,7 @@ async def get_join_requests(id: str, db: Session = Depends(Database), profile: m
     return group.group_requests
 
 @router.post('/{id}/accept-request/{profile_id}')
-async def accept_group_join_request(id: str, profile_id: int, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+async def accept_group_join_request(id: str, profile_id: int, db: Session = Depends(Database), profile: models.Profile = Depends(AdminAuth)):
     group = crud.read_group_by_id(db, id)
     check_object_ownership(group, profile, 'coordinator_id')
 
@@ -89,12 +89,14 @@ async def accept_group_join_request(id: str, profile_id: int, db: Session = Depe
 
     request.profile.group = request.group
     
-    notification = models.Notification(
-        profile_id = request.profile_id,
-        content = f'Your request to join {request.group.name} has been denied.'
+    notification = schemas.NotificationIn(
+        content=f'Your request to join the group {group.name} has been accepted.',
+        recipients=[
+            request.profile.id
+        ]
     )
 
-    notification.recipients = [request.profile]
+    crud.create_notification(db, notification, profile)
 
     db.add(notification)
     db.delete(request)
@@ -106,18 +108,20 @@ async def accept_group_join_request(id: str, profile_id: int, db: Session = Depe
     
 
 @router.post('/{id}/deny-request/{profile_id}')
-async def accept_group_join_request(group_id: str, profile_id: int, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+async def accept_group_join_request(group_id: str, profile_id: int, db: Session = Depends(Database), profile: models.Profile = Depends(AdminAuth)):
     group = crud.read_group_by_id(db, id)
     check_object_ownership(group, profile, 'coordinator_id')
     
     request = crud.read_group_join_request_by_ids(db, group_id, profile_id)
 
-    notification = models.Notification(
-        profile_id = request.profile_id,
-        content = f'Your request to join {request.group.name} has been denied.'
+    notification = schemas.NotificationIn(
+        content=f'Your request to join the group {group.name} has been denied.',
+        recipients=[
+            request.profile.id
+        ]
     )
 
-    notification.recipients = [request.profile]
+    crud.create_notification(db, notification, profile)
 
     db.add(notification)
     db.delete(request)
@@ -135,13 +139,24 @@ async def post_join_request(id: str, db: Session = Depends(Database), profile: m
 
     group = crud.read_group_by_id(db, id)
 
+
+
     if group is None:
         raise HTTPException(HTTP_404_NOT_FOUND, 'Not group with such id exists.')
+
+    notification = schemas.NotificationIn(
+        content=f'{profile.first_name} {profile.last_name} requests to join group {group.name}.',
+        recipients=[
+            group.coordinator_id
+        ]
+    )
+
+    crud.create_notification(db, notification, profile)
 
     return crud.create_group_join_request(db, profile.id, id)
 
 @router.delete('/{id}/delete-member/{profile_id}')
-async def delete_group_member(id: str, profile_id: int, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+async def delete_group_member(id: str, profile_id: int, db: Session = Depends(Database), profile: models.Profile = Depends(AdminAuth)):
     group = crud.read_group_by_id(db, id)
     check_object_ownership(group, profile, 'coordinator_id')
 
@@ -183,7 +198,7 @@ async def update_group_avatar(id: str, file: UploadFile = Form(...), db: Session
     return avatar
 
 @router.delete('/avatar/')
-async def delete_group_avatar(db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+async def delete_group_avatar(db: Session = Depends(Database), profile: models.Profile = Depends(AdminAuth)):
     crud.delete_group_avatar(db, profile)
 
     return {

@@ -235,7 +235,7 @@ def create_group(db: Session, group: schemas.GroupIn, coordinator_id: int):
         models.Profile.id == coordinator_id).one()
 
     new_group = models.Group(
-        id=token_urlsafe(8),
+        id=token_urlsafe(6),
         coordinator_id=coordinator_id,
         **group.dict(),
         date_created=date.today()

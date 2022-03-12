@@ -13,7 +13,7 @@ from typing import List, Optional
 router = APIRouter()
 
 #Testing route
-@router.post('/', response_model=schemas.NotificationNoRead)   
+@router.post('', response_model=schemas.NotificationNoRead)   
 async def post_notification(notification: schemas.NotificationIn, db: Session = Depends(Database), admin: models.Profile = Depends(AdminAuth)):
     # if not coordinator.is_admin and not coordinator.is_moderator:
     #     for id in notification.recipients:
@@ -44,13 +44,13 @@ async def get_notification(id: int, db: Session = Depends(Database), profile: mo
     return notification
     
 @router.get('/posted/{id}', response_model=schemas.NotificationNoRead)
-async def get_notification(id: int, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+async def get_notification(id: int, db: Session = Depends(Database), profile: models.Profile = Depends(AdminAuth)):
     notification = crud.read_notification_by_id_no_read(db, id, profile)
 
     return notification
 
 @router.delete('/{id}')
-async def delete_notification(id: int, db: Session = Depends(Database), profile: models.Profile = Depends(LoginAuth)):
+async def delete_notification(id: int, db: Session = Depends(Database), profile: models.Profile = Depends(AdminAuth)):
     notification = crud.read_notification_by_id_no_read(db, id, profile)
 
     check_object_ownership(notification, profile, 'profile_id')

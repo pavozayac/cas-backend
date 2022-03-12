@@ -7,11 +7,11 @@ load_dotenv()
 frontend_url = getenv('FRONTEND_URL')
 
 conf = ConnectionConfig(
-    MAIL_USERNAME="casportal.testmail@gmail.com",
-    MAIL_PASSWORD="jL7QHh36SnxFm2T",
-    MAIL_FROM="casportal.testmail@gmail.com",
+    MAIL_USERNAME="apikey",
+    MAIL_PASSWORD="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",
+    MAIL_FROM="casportal.mailing@gmail.com",
     MAIL_PORT=587,
-    MAIL_SERVER="smtp.gmail.com",
+    MAIL_SERVER="smtp.sendgrid.net",
     MAIL_TLS=True,
     MAIL_SSL=False,
     USE_CREDENTIALS=True,

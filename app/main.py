@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .resources import models, crud, schemas
 
-from .routers import auth, profiles, notifications, groups, reflections, tags
+from .routers import auth, profiles, notifications, groups, reflections
 
 api = FastAPI()
 
@@ -22,7 +22,9 @@ if not path.exists(settings.ATTACHMENT_PATH):
 
 origins = [
     'http://localhost:3000',
-    'http://localhost:5000'
+    'http://localhost:5000',
+    'https://ibcas.pl',
+    'http://ibcas.pl'
 ]
 
 api.add_middleware(
@@ -61,12 +63,6 @@ api.include_router(
     reflections.router,
     prefix='/reflections',
     tags=['reflections']
-)
-
-api.include_router(
-    tags.router,
-    prefix='/tags',
-    tags=['tags']
 )
 
 # api.include_router(

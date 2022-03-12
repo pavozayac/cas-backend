@@ -29,7 +29,7 @@ def search_profiles(filters: schemas.ProfileFilters, sorts: schemas.ProfileSorts
 #   CRUD actions for profiles
 #
 
-@router.get('/', response_model=List[schemas.Profile])
+@router.get('', response_model=List[schemas.Profile])
 def get_profiles(db: Session = Depends(Database)):
     return crud.read_profiles(db)
 
